@@ -27,6 +27,8 @@ import {
 import {
   DYNAMIC_FIELDS,
   getElementDisplayText,
+  renderBarcode,
+  renderQRCode,
 } from "../../lib/label-render";
 
 import {
@@ -227,6 +229,86 @@ function getCanvasElementStyle(
 
   return style;
 }
+function BarcodeElement({
+  value,
+  format,
+}: {
+  value: string;
+  format: string;
+}) {
+  const svgRef =
+    useRef<SVGSVGElement | null>(null);
+
+  useState(() => {
+    if (!svgRef.current || !value) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (!svgRef.current) return;
+
+      renderBarcode(
+        svgRef.current,
+        value,
+        format,
+      );
+    }, 0);
+  });
+
+  return (
+    <svg
+      ref={svgRef}
+      className="designer-barcode-svg"
+      aria-label={`Barcode ${value}`}
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+        maxWidth: "100%",
+      }}
+    />
+  );
+}
+
+function QRElement({
+  value,
+}: {
+  value: string;
+}) {
+  const canvasRef =
+    useRef<HTMLCanvasElement | null>(null);
+
+  useState(() => {
+    if (!canvasRef.current || !value) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (!canvasRef.current) return;
+
+      void renderQRCode(
+        canvasRef.current,
+        value,
+      );
+    }, 0);
+  });
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="designer-qr-canvas"
+      aria-label="QR code"
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+      }}
+    />
+  );
+}
+
+export default function LabelDesignerPage() {
 
 export default function LabelDesignerPage() {
   const [template, setTemplate] =
@@ -693,77 +775,86 @@ export default function LabelDesignerPage() {
       },
     );
   }
-
-  function renderElementContent(
-    element: LabelElement,
-  ) {
-    if (
-      element.type === "barcode"
-    ) {
-      return (
-        <div className="designer-barcode-preview">
-          ||||||||||||||||||||||||||
-          <br />
-          {selectedProduct?.barcode ||
-            "BARCODE"}
-        </div>
-      );
-    }
-
-    if (element.type === "qr") {
-      return (
-        <div className="designer-qr-preview">
-          QR
-        </div>
-      );
-    }
-
-    if (
-      element.type === "image" ||
-      element.type === "logo"
-    ) {
-      if (element.imageUrl) {
-        return (
-          <img
-            src={element.imageUrl}
-            alt=""
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-            }}
-          />
-        );
-      }
-
-      return (
-        <div className="designer-image-placeholder">
-          {element.type === "logo"
-            ? "LOGO"
-            : "IMAGE"}
-        </div>
-      );
-    }
-
-    if (
-      element.type === "line"
-    ) {
-      return null;
-    }
-
-    if (
-      element.type ===
-        "rectangle" ||
-      element.type === "circle"
-    ) {
-      return null;
-    }
-
-    return getElementDisplayText(
-      element,
-      selectedProduct,
+function renderElementContent(
+  element: LabelElement,
+) {
+  if (element.type === "barcode") {
+    return (
+      <BarcodeElement
+        value={
+          selectedProduct?.barcode ??
+          element.text ??
+          ""
+        }
+        format={
+          element.barcodeFormat ??
+          "CODE128"
+        }
+      />
     );
   }
+
+  if (element.type === "qr") {
+    const qrValue =
+      element.qrValue ||
+      selectedProduct?.barcode ||
+      selectedProduct?.sku ||
+      selectedProduct?.name ||
+      "";
+
+    return (
+      <QRElement value={qrValue} />
+    );
+  }
+
+  if (
+    element.type === "image" ||
+    element.type === "logo"
+  ) {
+    if (element.imageUrl) {
+      return (
+        <img
+          src={element.imageUrl}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="designer-image-placeholder">
+        {element.type === "logo"
+          ? "LOGO"
+          : "IMAGE"}
+      </div>
+    );
+  }
+
+  if (element.type === "line") {
+    return null;
+  }
+
+  if (
+    element.type === "rectangle" ||
+    element.type === "circle"
+  ) {
+    return null;
+  }
+
+  return getElementDisplayText(
+    element,
+    selectedProduct,
+  );
+}
+  
+
+    
+    
+    
 
   return (
     <main className="module-page label-designer-page">
