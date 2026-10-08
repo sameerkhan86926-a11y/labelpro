@@ -308,7 +308,7 @@ function QRElement({
   );
 }
 
-export default function LabelDesignerPage() {
+
 
 export default function LabelDesignerPage() {
   const [template, setTemplate] =
