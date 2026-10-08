@@ -3,11 +3,15 @@
 import { useState } from "react";
 import {
   addProduct,
+  archiveProduct,
   deleteProduct,
   getProducts,
+  restoreProduct,
   updateProduct,
   type StoredProduct,
 } from "../lib/storage";
+
+type ProductStatus = "Active" | "Archived" | "All";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<StoredProduct[]>(() =>
@@ -18,6 +22,8 @@ export default function ProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [statusFilter, setStatusFilter] =
+    useState<ProductStatus>("Active");
 
   const [form, setForm] = useState({
     name: "",
@@ -50,8 +56,21 @@ export default function ProductsPage() {
       categoryFilter === "All" ||
       product.category === categoryFilter;
 
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === "All" ||
+      (statusFilter === "Active" && !product.archived) ||
+      (statusFilter === "Archived" && product.archived);
+
+    return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const activeCount = products.filter(
+    (product) => !product.archived
+  ).length;
+
+  const archivedCount = products.filter(
+    (product) => product.archived
+  ).length;
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement>
@@ -143,9 +162,29 @@ export default function ProductsPage() {
     setProducts((current) => [...current, duplicate]);
   }
 
+  function handleArchive(product: StoredProduct) {
+    const confirmed = window.confirm(
+      `Archive "${product.name}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const updatedProducts = archiveProduct(product.id);
+
+    setProducts(updatedProducts);
+  }
+
+  function handleRestore(product: StoredProduct) {
+    const updatedProducts = restoreProduct(product.id);
+
+    setProducts(updatedProducts);
+  }
+
   function handleDeleteProduct(id: string) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this product?"
+      "Permanent delete will remove this product completely. Continue?"
     );
 
     if (!confirmed) {
@@ -186,132 +225,16 @@ export default function ProductsPage() {
         </button>
       </section>
 
-      {showForm && (
-        <section className="product-form-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-label">
-                {editingId ? "EDIT PRODUCT" : "NEW PRODUCT"}
-              </span>
-
-              <h3>
-                {editingId ? "Edit product" : "Add product"}
-              </h3>
-            </div>
-          </div>
-
-          <form
-            className="product-form"
-            onSubmit={handleSubmit}
-          >
-            <div className="form-field">
-              <label htmlFor="name">Product Name *</label>
-
-              <input
-                id="name"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Enter product name"
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="sku">SKU *</label>
-
-              <input
-                id="sku"
-                name="sku"
-                value={form.sku}
-                onChange={handleChange}
-                placeholder="e.g. PROD-001"
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="barcode">Barcode</label>
-
-              <input
-                id="barcode"
-                name="barcode"
-                value={form.barcode}
-                onChange={handleChange}
-                placeholder="Enter barcode"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="category">Category</label>
-
-              <input
-                id="category"
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                placeholder="e.g. Cosmetics"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="price">Selling Price</label>
-
-              <input
-                id="price"
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                placeholder="e.g. 499"
-                inputMode="decimal"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="stock">Stock</label>
-
-              <input
-                id="stock"
-                name="stock"
-                value={form.stock}
-                onChange={handleChange}
-                placeholder="e.g. 100"
-                inputMode="numeric"
-              />
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={resetForm}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="primary-button"
-              >
-                {editingId ? "Update Product" : "Save Product"}
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
-
       <section className="product-list-panel">
         <div className="panel-heading">
           <div>
-            <span className="section-label">
-              PRODUCT CATALOG
-            </span>
+            <span className="section-label">PRODUCT CATALOG</span>
 
-            <h3>All products</h3>
+            <h3>Product overview</h3>
           </div>
 
           <span className="section-note">
-            {filteredProducts.length} of {products.length}
+            {activeCount} active · {archivedCount} archived
           </span>
         </div>
 
@@ -320,7 +243,9 @@ export default function ProductsPage() {
             className="product-search"
             type="search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
             placeholder="Search product, SKU, barcode or category..."
           />
 
@@ -339,7 +264,161 @@ export default function ProductsPage() {
               </option>
             ))}
           </select>
+
+          <select
+            className="category-filter"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(
+                event.target.value as ProductStatus
+              )
+            }
+          >
+            <option value="Active">
+              Active Products
+            </option>
+
+            <option value="Archived">
+              Archived Products
+            </option>
+
+            <option value="All">
+              All Products
+            </option>
+          </select>
         </div>
+
+        {showForm && (
+          <section className="product-form-panel">
+            <div className="panel-heading">
+              <div>
+                <span className="section-label">
+                  {editingId
+                    ? "EDIT PRODUCT"
+                    : "NEW PRODUCT"}
+                </span>
+
+                <h3>
+                  {editingId
+                    ? "Edit product"
+                    : "Add product"}
+                </h3>
+              </div>
+            </div>
+
+            <form
+              className="product-form"
+              onSubmit={handleSubmit}
+            >
+              <div className="form-field">
+                <label htmlFor="name">
+                  Product Name *
+                </label>
+
+                <input
+                  id="name"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Enter product name"
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="sku">
+                  SKU *
+                </label>
+
+                <input
+                  id="sku"
+                  name="sku"
+                  value={form.sku}
+                  onChange={handleChange}
+                  placeholder="e.g. PROD-001"
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="barcode">
+                  Barcode
+                </label>
+
+                <input
+                  id="barcode"
+                  name="barcode"
+                  value={form.barcode}
+                  onChange={handleChange}
+                  placeholder="Enter barcode"
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="category">
+                  Category
+                </label>
+
+                <input
+                  id="category"
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  placeholder="e.g. Cosmetics"
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="price">
+                  Selling Price
+                </label>
+
+                <input
+                  id="price"
+                  name="price"
+                  value={form.price}
+                  onChange={handleChange}
+                  placeholder="e.g. 499"
+                  inputMode="decimal"
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="stock">
+                  Stock
+                </label>
+
+                <input
+                  id="stock"
+                  name="stock"
+                  value={form.stock}
+                  onChange={handleChange}
+                  placeholder="e.g. 100"
+                  inputMode="numeric"
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="primary-button"
+                >
+                  {editingId
+                    ? "Update Product"
+                    : "Save Product"}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
 
         {products.length === 0 ? (
           <div className="empty-state">
@@ -348,8 +427,9 @@ export default function ProductsPage() {
             <strong>No products yet</strong>
 
             <p>
-              Add your first product to start creating barcodes,
-              labels and printable product information.
+              Add your first product to start creating
+              barcodes, labels and printable product
+              information.
             </p>
 
             <button
@@ -363,11 +443,13 @@ export default function ProductsPage() {
           <div className="empty-state">
             <div className="empty-icon">⌕</div>
 
-            <strong>No matching products</strong>
+            <strong>
+              No matching products
+            </strong>
 
             <p>
-              Try another search term or select a different
-              category.
+              Try another search, category or product
+              status.
             </p>
           </div>
         ) : (
@@ -381,6 +463,7 @@ export default function ProductsPage() {
                   <th>Category</th>
                   <th>Price</th>
                   <th>Stock</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -394,9 +477,13 @@ export default function ProductsPage() {
 
                     <td>{product.sku}</td>
 
-                    <td>{product.barcode || "—"}</td>
+                    <td>
+                      {product.barcode || "—"}
+                    </td>
 
-                    <td>{product.category || "—"}</td>
+                    <td>
+                      {product.category || "—"}
+                    </td>
 
                     <td>
                       {product.price
@@ -404,30 +491,72 @@ export default function ProductsPage() {
                         : "—"}
                     </td>
 
-                    <td>{product.stock || "—"}</td>
+                    <td>
+                      {product.stock || "—"}
+                    </td>
+
+                    <td>
+                      {product.archived ? (
+                        <span className="status-badge archived">
+                          Archived
+                        </span>
+                      ) : (
+                        <span className="status-badge active">
+                          Active
+                        </span>
+                      )}
+                    </td>
 
                     <td>
                       <div className="product-actions">
-                        <button
-                          className="table-action"
-                          onClick={() => handleEdit(product)}
-                        >
-                          Edit
-                        </button>
+                        {!product.archived && (
+                          <>
+                            <button
+                              className="table-action"
+                              onClick={() =>
+                                handleEdit(product)
+                              }
+                            >
+                              Edit
+                            </button>
 
-                        <button
-                          className="table-action"
-                          onClick={() =>
-                            handleDuplicate(product)
-                          }
-                        >
-                          Duplicate
-                        </button>
+                            <button
+                              className="table-action"
+                              onClick={() =>
+                                handleDuplicate(product)
+                              }
+                            >
+                              Duplicate
+                            </button>
+
+                            <button
+                              className="table-action"
+                              onClick={() =>
+                                handleArchive(product)
+                              }
+                            >
+                              Archive
+                            </button>
+                          </>
+                        )}
+
+                        {product.archived && (
+                          <button
+                            className="table-action"
+                            onClick={() =>
+                              handleRestore(product)
+                            }
+                          >
+                            Restore
+                          </button>
+                        )}
 
                         <button
                           className="delete-button"
                           onClick={() =>
-                            handleDeleteProduct(product.id)
+                            handleDeleteProduct(
+                              product.id
+                            )
                           }
                         >
                           Delete
