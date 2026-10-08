@@ -2447,3 +2447,17 @@ a {
   .designer-align-button {
   min-height: 36px;
 }
+.designer-secondary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.designer-secondary-button:disabled:hover {
+  background: #ffffff;
+  border-color: #dbe4f0;
+  color: #2563eb;
+  transform: none;
+}
+
+
