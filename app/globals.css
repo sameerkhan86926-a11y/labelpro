@@ -888,3 +888,127 @@ a {
     min-width: 1050px;
   }
 }
+.product-detail-panel {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  padding: 22px;
+}
+
+.product-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.product-detail-header h3 {
+  margin: 7px 0 6px;
+  font-size: 22px;
+  color: #111827;
+}
+
+.product-detail-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.product-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  background: #eef1f5;
+}
+
+.detail-item {
+  min-height: 88px;
+  padding: 15px;
+  background: white;
+}
+
+.detail-item span:first-child {
+  display: block;
+  margin-bottom: 8px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.detail-item strong {
+  display: block;
+  color: #111827;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.detail-id {
+  font-size: 9px !important;
+  color: #667085 !important;
+}
+
+.product-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.product-name-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.product-name-button:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1000px) {
+  .product-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .product-detail-panel {
+    padding: 16px;
+  }
+
+  .product-detail-header {
+    flex-direction: column;
+  }
+
+  .product-detail-header .secondary-button {
+    width: 100%;
+  }
+
+  .product-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-detail-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .product-detail-actions button {
+    width: 100%;
+  }
+}
