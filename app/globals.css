@@ -2201,4 +2201,30 @@ a {
     grid-template-columns: 1fr;
   }
 }
+.label-element {
+  touch-action: none;
+  user-select: none;
+}
 
+.label-resize-handle {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 2px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 200;
+}
+
+.label-element.selected {
+  cursor: move;
+}
+
+.label-element.selected .label-resize-handle {
+  cursor: nwse-resize;
+}
