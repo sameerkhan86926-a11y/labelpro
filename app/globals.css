@@ -1586,8 +1586,8 @@ a {
 .designer-page {
   min-height: 100vh;
   padding: 28px;
-  background: #f5f7fb;
-  color: #111827;
+  background: #f5f8ff;
+  color: #172033;
 }
 
 .designer-header {
@@ -1600,7 +1600,7 @@ a {
 
 .designer-breadcrumb {
   margin-bottom: 8px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1612,13 +1612,13 @@ a {
   line-height: 1.15;
   font-weight: 750;
   letter-spacing: -0.03em;
-  color: #111827;
+  color: #172033;
 }
 
 .designer-subtitle {
   margin: 8px 0 0;
   max-width: 650px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -1646,28 +1646,32 @@ a {
     transform 0.18s ease;
 }
 
+/* BLUE PRIMARY BUTTON */
 .designer-primary-button {
-  background: #111827;
+  background: #2563eb;
   color: #ffffff;
-  border-color: #111827;
+  border-color: #2563eb;
 }
 
 .designer-primary-button:hover {
-  background: #1f2937;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
   transform: translateY(-1px);
 }
 
+/* WHITE SECONDARY BUTTON */
 .designer-secondary-button {
   background: #ffffff;
-  color: #111827;
-  border-color: #d1d5db;
+  color: #2563eb;
+  border-color: #dbe4f0;
 }
 
 .designer-secondary-button:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: #eff6ff;
+  border-color: #93c5fd;
 }
 
+/* DELETE / DANGER BUTTON */
 .designer-danger-button {
   background: #ffffff;
   color: #dc2626;
@@ -1681,10 +1685,10 @@ a {
 .designer-save-message {
   margin-bottom: 16px;
   padding: 11px 14px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid #bfdbfe;
   border-radius: 9px;
-  background: #f0fdf4;
-  color: #166534;
+  background: #eff6ff;
+  color: #1d4ed8;
   font-size: 13px;
   font-weight: 600;
 }
