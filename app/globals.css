@@ -2459,15 +2459,15 @@ a {
   color: #2563eb;
   transform: none;
 }
-/* =========================================================
-   LABELPRO — TEMPLATES
-   ========================================================= */
+  /* =========================================================
+    LABELPRO — TEMPLATES — BLUE / WHITE THEME
+    ========================================================= */
 
 .templates-page {
   min-height: 100vh;
   padding: 32px;
-  background: #f5f7fb;
-  color: #111827;
+  background: #f5f8ff;
+  color: #172554;
 }
 
 .templates-header {
@@ -2480,14 +2480,14 @@ a {
 
 .templates-breadcrumb {
   margin-bottom: 8px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
   font-weight: 500;
 }
 
 .templates-title {
   margin: 0;
-  color: #111827;
+  color: #123b82;
   font-size: 32px;
   line-height: 1.2;
   font-weight: 700;
@@ -2497,10 +2497,14 @@ a {
 .templates-subtitle {
   margin: 8px 0 0;
   max-width: 620px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 14px;
   line-height: 1.6;
 }
+
+/* =========================================================
+   PRIMARY BUTTON
+   ========================================================= */
 
 .templates-primary-button {
   display: inline-flex;
@@ -2508,9 +2512,9 @@ a {
   justify-content: center;
   min-height: 42px;
   padding: 0 18px;
-  border: 1px solid #111827;
+  border: 1px solid #2563eb;
   border-radius: 9px;
-  background: #111827;
+  background: #2563eb;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
@@ -2524,9 +2528,9 @@ a {
 }
 
 .templates-primary-button:hover {
-  background: #1f2937;
-  border-color: #1f2937;
-  box-shadow: 0 5px 14px rgba(17, 24, 39, 0.14);
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
   transform: translateY(-1px);
 }
 
@@ -2545,11 +2549,11 @@ a {
   justify-content: center;
   min-height: 360px;
   padding: 40px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbeafe;
   border-radius: 16px;
   background: #ffffff;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.05);
 }
 
 .templates-empty-icon {
@@ -2559,17 +2563,17 @@ a {
   width: 58px;
   height: 58px;
   margin-bottom: 18px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid #bfdbfe;
   border-radius: 14px;
-  background: #f8fafc;
-  color: #374151;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 28px;
   font-weight: 400;
 }
 
 .templates-empty h2 {
   margin: 0;
-  color: #111827;
+  color: #123b82;
   font-size: 20px;
   font-weight: 700;
 }
@@ -2577,7 +2581,7 @@ a {
 .templates-empty p {
   max-width: 430px;
   margin: 8px 0 22px;
-  color: #6b7280;
+  color: #64748b;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -2602,10 +2606,11 @@ a {
 .template-card {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbeafe;
   border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
+  box-shadow:
+    0 3px 12px rgba(37, 99, 235, 0.05);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -2613,9 +2618,9 @@ a {
 }
 
 .template-card:hover {
-  border-color: #d1d5db;
+  border-color: #93c5fd;
   box-shadow:
-    0 8px 24px rgba(17, 24, 39, 0.08);
+    0 10px 28px rgba(37, 99, 235, 0.1);
   transform: translateY(-2px);
 }
 
@@ -2630,34 +2635,8 @@ a {
   min-height: 210px;
   padding: 24px;
   overflow: hidden;
-  border-bottom: 1px solid #e5e7eb;
-  background:
-    linear-gradient(
-      45deg,
-      #f1f5f9 25%,
-      transparent 25%
-    ),
-    linear-gradient(
-      -45deg,
-      #f1f5f9 25%,
-      transparent 25%
-    ),
-    linear-gradient(
-      45deg,
-      transparent 75%,
-      #f1f5f9 75%
-    ),
-    linear-gradient(
-      -45deg,
-      transparent 75%,
-      #f1f5f9 75%
-    );
-  background-position:
-    0 0,
-    0 8px,
-    8px -8px,
-    -8px 0;
-  background-size: 16px 16px;
+  border-bottom: 1px solid #dbeafe;
+  background: #f8fbff;
 }
 
 .template-preview {
@@ -2665,10 +2644,11 @@ a {
   max-width: 100%;
   max-height: 180px;
   overflow: hidden;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
+  border: 1px solid #93c5fd;
+  border-radius: 5px;
+  background: #ffffff;
   box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.12);
+    0 6px 18px rgba(37, 99, 235, 0.12);
 }
 
 .template-preview-element {
@@ -2681,7 +2661,7 @@ a {
 }
 
 /* =========================================================
-   TEMPLATE CONTENT
+   CARD CONTENT
    ========================================================= */
 
 .template-card-content {
@@ -2698,7 +2678,7 @@ a {
 .template-card-top h2 {
   margin: 0;
   overflow: hidden;
-  color: #111827;
+  color: #123b82;
   font-size: 17px;
   line-height: 1.35;
   font-weight: 700;
@@ -2709,12 +2689,16 @@ a {
 .template-card-top p {
   margin: 6px 0 0;
   overflow: hidden;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
   line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* =========================================================
+   META
+   ========================================================= */
 
 .template-meta {
   display: flex;
@@ -2729,12 +2713,12 @@ a {
   align-items: center;
   min-height: 28px;
   padding: 0 9px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #bfdbfe;
   border-radius: 7px;
-  background: #f8fafc;
-  color: #4b5563;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* =========================================================
@@ -2759,35 +2743,44 @@ a {
   transition:
     background 150ms ease,
     border-color 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    box-shadow 150ms ease;
 }
 
+/* EDIT */
+
 .template-edit-button {
-  border: 1px solid #111827;
-  background: #111827;
+  border: 1px solid #2563eb;
+  background: #2563eb;
   color: #ffffff;
 }
 
 .template-edit-button:hover {
-  border-color: #1f2937;
-  background: #1f2937;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  box-shadow:
+    0 4px 10px rgba(37, 99, 235, 0.18);
 }
 
+/* DUPLICATE */
+
 .template-secondary-button {
-  border: 1px solid #d1d5db;
+  border: 1px solid #bfdbfe;
   background: #ffffff;
-  color: #374151;
+  color: #2563eb;
 }
 
 .template-secondary-button:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  border-color: #60a5fa;
+  background: #eff6ff;
 }
+
+/* DELETE */
 
 .template-danger-button {
   border: 1px solid #fecaca;
   background: #ffffff;
-  color: #b91c1c;
+  color: #dc2626;
 }
 
 .template-danger-button:hover {
@@ -2889,4 +2882,3 @@ a {
     align-items: flex-start;
   }
 }
-
