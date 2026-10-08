@@ -858,3 +858,33 @@ a {
     flex-wrap: wrap;
   }
 }
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.status-badge.active {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.status-badge.archived {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.product-table {
+  min-width: 1050px;
+}
+
+@media (max-width: 600px) {
+  .product-table {
+    min-width: 1050px;
+  }
+}
