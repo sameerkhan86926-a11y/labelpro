@@ -433,6 +433,218 @@ export default function LabelDesignerPage() {
         new Date().toISOString(),
     }));
   }
+    function alignElement(
+    alignment:
+      | "left"
+      | "center"
+      | "right"
+      | "top"
+      | "middle"
+      | "bottom",
+  ) {
+    if (!selectedElement) return;
+
+    let updates: Partial<LabelElement> = {};
+
+    switch (alignment) {
+      case "left":
+        updates = {
+          x: 0,
+        };
+        break;
+
+      case "center":
+        updates = {
+          x:
+            (template.size.width -
+              selectedElement.width) /
+            2,
+        };
+        break;
+
+      case "right":
+        updates = {
+          x:
+            template.size.width -
+            selectedElement.width,
+        };
+        break;
+
+      case "top":
+        updates = {
+          y: 0,
+        };
+        break;
+
+      case "middle":
+        updates = {
+          y:
+            (template.size.height -
+              selectedElement.height) /
+            2,
+        };
+        break;
+
+      case "bottom":
+        updates = {
+          y:
+            template.size.height -
+            selectedElement.height,
+        };
+        break;
+    }
+
+    updateElement(
+      selectedElement.id,
+      updates,
+    );
+  }
+
+  function bringToFront() {
+    if (!selectedElement) return;
+
+    setTemplate((current) => {
+      const selected =
+        current.elements.find(
+          (element) =>
+            element.id ===
+            selectedElement.id,
+        );
+
+      if (!selected) return current;
+
+      const others =
+        current.elements.filter(
+          (element) =>
+            element.id !==
+            selectedElement.id,
+        );
+
+      return {
+        ...current,
+        elements: [
+          ...others,
+          selected,
+        ],
+        updatedAt:
+          new Date().toISOString(),
+      };
+    });
+  }
+
+  function sendToBack() {
+    if (!selectedElement) return;
+
+    setTemplate((current) => {
+      const selected =
+        current.elements.find(
+          (element) =>
+            element.id ===
+            selectedElement.id,
+        );
+
+      if (!selected) return current;
+
+      const others =
+        current.elements.filter(
+          (element) =>
+            element.id !==
+            selectedElement.id,
+        );
+
+      return {
+        ...current,
+        elements: [
+          selected,
+          ...others,
+        ],
+        updatedAt:
+          new Date().toISOString(),
+      };
+    });
+  }
+
+  function moveForward() {
+    if (!selectedElement) return;
+
+    setTemplate((current) => {
+      const elements = [
+        ...current.elements,
+      ];
+
+      const index =
+        elements.findIndex(
+          (element) =>
+            element.id ===
+            selectedElement.id,
+        );
+
+      if (
+        index === -1 ||
+        index ===
+          elements.length - 1
+      ) {
+        return current;
+      }
+
+      const nextIndex =
+        index + 1;
+
+      [
+        elements[index],
+        elements[nextIndex],
+      ] = [
+        elements[nextIndex],
+        elements[index],
+      ];
+
+      return {
+        ...current,
+        elements,
+        updatedAt:
+          new Date().toISOString(),
+      };
+    });
+  }
+
+  function moveBackward() {
+    if (!selectedElement) return;
+
+    setTemplate((current) => {
+      const elements = [
+        ...current.elements,
+      ];
+
+      const index =
+        elements.findIndex(
+          (element) =>
+            element.id ===
+            selectedElement.id,
+        );
+
+      if (index <= 0) {
+        return current;
+      }
+
+      const previousIndex =
+        index - 1;
+
+      [
+        elements[index],
+        elements[previousIndex],
+      ] = [
+        elements[previousIndex],
+        elements[index],
+      ];
+
+      return {
+        ...current,
+        elements,
+        updatedAt:
+          new Date().toISOString(),
+      };
+    });
+  }
 
   function handleElementPointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
@@ -1656,6 +1868,136 @@ export default function LabelDesignerPage() {
                   </div>
                 </div>
               )}
+                            <div className="designer-arrange-section">
+                <div className="designer-section-title">
+                  Arrange & Align
+                </div>
+
+                <p className="designer-section-description">
+                  Position and layer the selected
+                  element precisely.
+                </p>
+
+                <div className="designer-align-group">
+                  <div className="designer-align-label">
+                    Horizontal
+                  </div>
+
+                  <div className="designer-align-buttons">
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("left")
+                      }
+                      title="Align Left"
+                    >
+                      Left
+                    </button>
+
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("center")
+                      }
+                      title="Align Center"
+                    >
+                      Center
+                    </button>
+
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("right")
+                      }
+                      title="Align Right"
+                    >
+                      Right
+                    </button>
+                  </div>
+                </div>
+
+                <div className="designer-align-group">
+                  <div className="designer-align-label">
+                    Vertical
+                  </div>
+
+                  <div className="designer-align-buttons">
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("top")
+                      }
+                      title="Align Top"
+                    >
+                      Top
+                    </button>
+
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("middle")
+                      }
+                      title="Align Middle"
+                    >
+                      Middle
+                    </button>
+
+                    <button
+                      type="button"
+                      className="designer-align-button"
+                      onClick={() =>
+                        alignElement("bottom")
+                      }
+                      title="Align Bottom"
+                    >
+                      Bottom
+                    </button>
+                  </div>
+                </div>
+
+                <div className="designer-layer-label">
+                  Layer Order
+                </div>
+
+                <div className="designer-layer-grid">
+                  <button
+                    type="button"
+                    className="designer-align-button"
+                    onClick={bringToFront}
+                  >
+                    Bring Front
+                  </button>
+
+                  <button
+                    type="button"
+                    className="designer-align-button"
+                    onClick={sendToBack}
+                  >
+                    Send Back
+                  </button>
+
+                  <button
+                    type="button"
+                    className="designer-align-button"
+                    onClick={moveForward}
+                  >
+                    Move Up
+                  </button>
+
+                  <button
+                    type="button"
+                    className="designer-align-button"
+                    onClick={moveBackward}
+                  >
+                    Move Down
+                  </button>
+                </div>
+              </div>
 
               <div className="designer-property">
                 <label>
