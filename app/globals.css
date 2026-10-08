@@ -1322,4 +1322,260 @@ a {
     grid-template-columns: 1fr;
   }
 }
+.qr-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 18px;
+  margin-top: 18px;
+}
 
+.qr-controls-panel,
+.qr-preview-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  padding: 22px;
+}
+
+.qr-section-heading,
+.qr-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.qr-section-heading h3,
+.qr-preview-header h3 {
+  margin: 7px 0 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.qr-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.qr-form select,
+.qr-form input[type="text"],
+.qr-form input[type="email"],
+.qr-form input[type="tel"],
+.qr-form input[type="number"],
+.qr-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: white;
+  color: #111827;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.qr-form textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.qr-form select:focus,
+.qr-form input:focus,
+.qr-form textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px #eff6ff;
+}
+
+.qr-wide {
+  grid-column: 1 / -1;
+}
+
+.qr-color-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: white;
+}
+
+.qr-color-control input[type="color"] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.qr-color-control span {
+  color: #475467;
+  font-family: monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.qr-message {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.qr-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b42318;
+}
+
+.qr-success {
+  border: 1px solid #abefc6;
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.qr-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding-top: 4px;
+}
+
+.qr-type-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.qr-preview-stage {
+  min-height: 340px;
+  margin-top: 20px;
+  padding: 28px;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  background: #fafbfc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.qr-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: white;
+}
+
+.qr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.qr-empty strong {
+  color: #344054;
+  font-size: 13px;
+}
+
+.qr-empty span {
+  max-width: 280px;
+  color: #98a2b3;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.qr-preview-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  background: #eef1f5;
+}
+
+.qr-preview-info div {
+  min-height: 72px;
+  padding: 13px;
+  background: white;
+}
+
+.qr-preview-info span {
+  display: block;
+  margin-bottom: 7px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.qr-preview-info strong {
+  display: block;
+  color: #111827;
+  font-size: 11px;
+}
+
+@media (max-width: 1000px) {
+  .qr-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .qr-controls-panel,
+  .qr-preview-panel {
+    padding: 16px;
+  }
+
+  .qr-form {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-wide {
+    grid-column: auto;
+  }
+
+  .qr-message {
+    grid-column: auto;
+  }
+
+  .qr-form-actions {
+    grid-column: auto;
+    flex-direction: column;
+  }
+
+  .qr-form-actions button {
+    width: 100%;
+  }
+
+  .qr-preview-stage {
+    min-height: 260px;
+    padding: 18px;
+  }
+
+  .qr-preview-info {
+    grid-template-columns: 1fr;
+  }
+}
