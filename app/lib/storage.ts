@@ -6,6 +6,7 @@ export type StoredProduct = {
   category: string;
   price: string;
   stock: string;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -34,7 +35,10 @@ export function getProducts(): StoredProduct[] {
       return [];
     }
 
-    return parsed;
+    return parsed.map((product) => ({
+      ...product,
+      archived: product.archived === true,
+    }));
   } catch {
     return [];
   }
@@ -52,7 +56,10 @@ export function saveProducts(products: StoredProduct[]) {
 }
 
 export function addProduct(
-  product: Omit<StoredProduct, "id" | "createdAt" | "updatedAt">
+  product: Omit<
+    StoredProduct,
+    "id" | "createdAt" | "updatedAt" | "archived"
+  >
 ) {
   const products = getProducts();
 
@@ -61,6 +68,7 @@ export function addProduct(
   const newProduct: StoredProduct = {
     ...product,
     id: crypto.randomUUID(),
+    archived: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -78,6 +86,46 @@ export function deleteProduct(id: string) {
   const updatedProducts = products.filter(
     (product) => product.id !== id
   );
+
+  saveProducts(updatedProducts);
+
+  return updatedProducts;
+}
+
+export function archiveProduct(id: string) {
+  const products = getProducts();
+
+  const updatedProducts = products.map((product) => {
+    if (product.id !== id) {
+      return product;
+    }
+
+    return {
+      ...product,
+      archived: true,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  saveProducts(updatedProducts);
+
+  return updatedProducts;
+}
+
+export function restoreProduct(id: string) {
+  const products = getProducts();
+
+  const updatedProducts = products.map((product) => {
+    if (product.id !== id) {
+      return product;
+    }
+
+    return {
+      ...product,
+      archived: false,
+      updatedAt: new Date().toISOString(),
+    };
+  });
 
   saveProducts(updatedProducts);
 
