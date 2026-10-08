@@ -1,21 +1,15 @@
 "use client";
 
-import { useState } from "react";
-
-type Product = {
-  id: string;
-  name: string;
-  sku: string;
-  barcode: string;
-  category: string;
-  price: string;
-  stock: string;
-};
-
-const initialProducts: Product[] = [];
+import { useEffect, useState } from "react";
+import {
+  addProduct,
+  deleteProduct,
+  getProducts,
+  type StoredProduct,
+} from "../lib/storage";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<StoredProduct[]>([]);
   const [showForm, setShowForm] = useState(false);
 
   const [form, setForm] = useState({
@@ -26,6 +20,10 @@ export default function ProductsPage() {
     price: "",
     stock: "",
   });
+
+  useEffect(() => {
+    setProducts(getProducts());
+  }, []);
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement>
@@ -38,24 +36,25 @@ export default function ProductsPage() {
     }));
   }
 
-  function addProduct(event: React.FormEvent<HTMLFormElement>) {
+  function handleAddProduct(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     if (!form.name.trim() || !form.sku.trim()) {
       return;
     }
 
-    const newProduct: Product = {
-      id: crypto.randomUUID(),
+    const product = addProduct({
       name: form.name.trim(),
       sku: form.sku.trim(),
       barcode: form.barcode.trim(),
       category: form.category.trim(),
       price: form.price.trim(),
       stock: form.stock.trim(),
-    };
+    });
 
-    setProducts((current) => [...current, newProduct]);
+    setProducts((current) => [...current, product]);
 
     setForm({
       name: "",
@@ -69,10 +68,18 @@ export default function ProductsPage() {
     setShowForm(false);
   }
 
-  function deleteProduct(id: string) {
-    setProducts((current) =>
-      current.filter((product) => product.id !== id)
+  function handleDeleteProduct(id: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this product?"
     );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const updatedProducts = deleteProduct(id);
+
+    setProducts(updatedProducts);
   }
 
   return (
@@ -106,7 +113,10 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <form className="product-form" onSubmit={addProduct}>
+          <form
+            className="product-form"
+            onSubmit={handleAddProduct}
+          >
             <div className="form-field">
               <label htmlFor="name">Product Name *</label>
 
@@ -192,7 +202,10 @@ export default function ProductsPage() {
                 Cancel
               </button>
 
-              <button type="submit" className="primary-button">
+              <button
+                type="submit"
+                className="primary-button"
+              >
                 Save Product
               </button>
             </div>
@@ -203,7 +216,10 @@ export default function ProductsPage() {
       <section className="product-list-panel">
         <div className="panel-heading">
           <div>
-            <span className="section-label">PRODUCT CATALOG</span>
+            <span className="section-label">
+              PRODUCT CATALOG
+            </span>
+
             <h3>All products</h3>
           </div>
 
@@ -270,7 +286,9 @@ export default function ProductsPage() {
                     <td>
                       <button
                         className="delete-button"
-                        onClick={() => deleteProduct(product.id)}
+                        onClick={() =>
+                          handleDeleteProduct(product.id)
+                        }
                       >
                         Delete
                       </button>
