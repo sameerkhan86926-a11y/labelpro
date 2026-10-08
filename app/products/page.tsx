@@ -13,6 +13,35 @@ import {
 
 type ProductStatus = "Active" | "Archived" | "All";
 
+const emptyForm = {
+  name: "",
+  sku: "",
+  barcode: "",
+  category: "",
+
+  description: "",
+
+  mrp: "",
+  price: "",
+  costPrice: "",
+
+  stock: "",
+  minimumStock: "",
+
+  batchNumber: "",
+  manufacturingDate: "",
+  expiryDate: "",
+
+  supplier: "",
+  manufacturer: "",
+
+  weight: "",
+  unit: "",
+  countryOfOrigin: "",
+
+  productImage: "",
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<StoredProduct[]>(() =>
     getProducts()
@@ -28,14 +57,7 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] =
     useState<ProductStatus>("Active");
 
-  const [form, setForm] = useState({
-    name: "",
-    sku: "",
-    barcode: "",
-    category: "",
-    price: "",
-    stock: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const categories = Array.from(
     new Set(
@@ -49,11 +71,11 @@ export default function ProductsPage() {
     const searchText = search.trim().toLowerCase();
 
     const matchesSearch =
-      !searchText ||
-      product.name.toLowerCase().includes(searchText) ||
-      product.sku.toLowerCase().includes(searchText) ||
-      product.barcode.toLowerCase().includes(searchText) ||
-      product.category.toLowerCase().includes(searchText);
+  !searchText ||
+  product.name.toLowerCase().includes(searchText) ||
+  product.sku.toLowerCase().includes(searchText) ||
+  product.barcode.toLowerCase().includes(searchText) ||
+  product.category.toLowerCase().includes(searchText);
 
     const matchesCategory =
       categoryFilter === "All" ||
@@ -76,7 +98,9 @@ export default function ProductsPage() {
   ).length;
 
   function handleChange(
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >
   ) {
     const { name, value } = event.target;
 
@@ -87,15 +111,7 @@ export default function ProductsPage() {
   }
 
   function resetForm() {
-    setForm({
-      name: "",
-      sku: "",
-      barcode: "",
-      category: "",
-      price: "",
-      stock: "",
-    });
-
+    setForm(emptyForm);
     setEditingId(null);
     setShowForm(false);
   }
@@ -109,15 +125,40 @@ export default function ProductsPage() {
       return;
     }
 
+    const productData = {
+      name: form.name.trim(),
+      sku: form.sku.trim(),
+      barcode: form.barcode.trim(),
+      category: form.category.trim(),
+
+      description: form.description.trim(),
+
+      mrp: form.mrp.trim(),
+      price: form.price.trim(),
+      costPrice: form.costPrice.trim(),
+
+      stock: form.stock.trim(),
+      minimumStock: form.minimumStock.trim(),
+
+      batchNumber: form.batchNumber.trim(),
+      manufacturingDate: form.manufacturingDate,
+      expiryDate: form.expiryDate,
+
+      supplier: form.supplier.trim(),
+      manufacturer: form.manufacturer.trim(),
+
+      weight: form.weight.trim(),
+      unit: form.unit.trim(),
+      countryOfOrigin: form.countryOfOrigin.trim(),
+
+      productImage: form.productImage.trim(),
+    };
+
     if (editingId) {
-      const updatedProducts = updateProduct(editingId, {
-        name: form.name.trim(),
-        sku: form.sku.trim(),
-        barcode: form.barcode.trim(),
-        category: form.category.trim(),
-        price: form.price.trim(),
-        stock: form.stock.trim(),
-      });
+      const updatedProducts = updateProduct(
+        editingId,
+        productData
+      );
 
       setProducts(updatedProducts);
 
@@ -133,14 +174,7 @@ export default function ProductsPage() {
       return;
     }
 
-    const product = addProduct({
-      name: form.name.trim(),
-      sku: form.sku.trim(),
-      barcode: form.barcode.trim(),
-      category: form.category.trim(),
-      price: form.price.trim(),
-      stock: form.stock.trim(),
-    });
+    const product = addProduct(productData);
 
     setProducts((current) => [...current, product]);
 
@@ -158,8 +192,28 @@ export default function ProductsPage() {
       sku: product.sku,
       barcode: product.barcode,
       category: product.category,
+
+      description: product.description,
+
+      mrp: product.mrp,
       price: product.price,
+      costPrice: product.costPrice,
+
       stock: product.stock,
+      minimumStock: product.minimumStock,
+
+      batchNumber: product.batchNumber,
+      manufacturingDate: product.manufacturingDate,
+      expiryDate: product.expiryDate,
+
+      supplier: product.supplier,
+      manufacturer: product.manufacturer,
+
+      weight: product.weight,
+      unit: product.unit,
+      countryOfOrigin: product.countryOfOrigin,
+
+      productImage: product.productImage,
     });
 
     setShowForm(true);
@@ -171,8 +225,28 @@ export default function ProductsPage() {
       sku: `${product.sku}-COPY`,
       barcode: product.barcode,
       category: product.category,
+
+      description: product.description,
+
+      mrp: product.mrp,
       price: product.price,
+      costPrice: product.costPrice,
+
       stock: product.stock,
+      minimumStock: product.minimumStock,
+
+      batchNumber: product.batchNumber,
+      manufacturingDate: product.manufacturingDate,
+      expiryDate: product.expiryDate,
+
+      supplier: product.supplier,
+      manufacturer: product.manufacturer,
+
+      weight: product.weight,
+      unit: product.unit,
+      countryOfOrigin: product.countryOfOrigin,
+
+      productImage: product.productImage,
     });
 
     setProducts((current) => [...current, duplicate]);
@@ -257,13 +331,16 @@ export default function ProductsPage() {
     <main className="module-page">
       <section className="module-header">
         <div>
-          <span className="eyebrow">PRODUCT MANAGEMENT</span>
+          <span className="eyebrow">
+            PRODUCT MANAGEMENT
+          </span>
 
           <h2>Products</h2>
 
           <p>
-            Manage products, SKUs, barcodes, pricing and stock
-            information from one workspace.
+            Manage complete product master data including
+            pricing, stock, batch, expiry, supplier and
+            manufacturer information.
           </p>
         </div>
 
@@ -275,6 +352,7 @@ export default function ProductsPage() {
             } else {
               setSelectedProduct(null);
               setEditingId(null);
+              setForm(emptyForm);
               setShowForm(true);
             }
           }}
@@ -294,8 +372,8 @@ export default function ProductsPage() {
               <h3>{selectedProduct.name}</h3>
 
               <p>
-                Complete product information and available
-                product actions.
+                Complete product master information and
+                available product actions.
               </p>
             </div>
 
@@ -321,14 +399,25 @@ export default function ProductsPage() {
             <div className="detail-item">
               <span>Barcode</span>
               <strong>
-                {selectedProduct.barcode || "Not assigned"}
+                {selectedProduct.barcode ||
+                  "Not assigned"}
               </strong>
             </div>
 
             <div className="detail-item">
               <span>Category</span>
               <strong>
-                {selectedProduct.category || "Not assigned"}
+                {selectedProduct.category ||
+                  "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>MRP</span>
+              <strong>
+                {selectedProduct.mrp
+                  ? `₹${selectedProduct.mrp}`
+                  : "Not set"}
               </strong>
             </div>
 
@@ -342,9 +431,84 @@ export default function ProductsPage() {
             </div>
 
             <div className="detail-item">
+              <span>Cost Price</span>
+              <strong>
+                {selectedProduct.costPrice
+                  ? `₹${selectedProduct.costPrice}`
+                  : "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
               <span>Stock</span>
               <strong>
                 {selectedProduct.stock || "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Minimum Stock</span>
+              <strong>
+                {selectedProduct.minimumStock ||
+                  "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Batch Number</span>
+              <strong>
+                {selectedProduct.batchNumber ||
+                  "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Manufacturing Date</span>
+              <strong>
+                {selectedProduct.manufacturingDate ||
+                  "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Expiry Date</span>
+              <strong>
+                {selectedProduct.expiryDate ||
+                  "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Supplier</span>
+              <strong>
+                {selectedProduct.supplier ||
+                  "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Manufacturer</span>
+              <strong>
+                {selectedProduct.manufacturer ||
+                  "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Weight</span>
+              <strong>
+                {selectedProduct.weight || "Not set"}
+                {selectedProduct.unit
+                  ? ` ${selectedProduct.unit}`
+                  : ""}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Country of Origin</span>
+              <strong>
+                {selectedProduct.countryOfOrigin ||
+                  "Not set"}
               </strong>
             </div>
 
@@ -372,14 +536,26 @@ export default function ProductsPage() {
             <div className="detail-item">
               <span>Created</span>
               <strong>
-                {formatDate(selectedProduct.createdAt)}
+                {formatDate(
+                  selectedProduct.createdAt
+                )}
               </strong>
             </div>
 
             <div className="detail-item">
               <span>Last Updated</span>
               <strong>
-                {formatDate(selectedProduct.updatedAt)}
+                {formatDate(
+                  selectedProduct.updatedAt
+                )}
+              </strong>
+            </div>
+
+            <div className="detail-item detail-description">
+              <span>Description</span>
+              <strong>
+                {selectedProduct.description ||
+                  "No description added"}
               </strong>
             </div>
           </div>
@@ -452,7 +628,9 @@ export default function ProductsPage() {
             <button
               className="delete-button"
               onClick={() =>
-                handleDeleteProduct(selectedProduct.id)
+                handleDeleteProduct(
+                  selectedProduct.id
+                )
               }
             >
               Delete Permanently
@@ -483,6 +661,10 @@ export default function ProductsPage() {
             className="product-form"
             onSubmit={handleSubmit}
           >
+            <div className="form-section-title">
+              Basic Information
+            </div>
+
             <div className="form-field">
               <label htmlFor="name">
                 Product Name *
@@ -541,6 +723,40 @@ export default function ProductsPage() {
               />
             </div>
 
+            <div className="form-field form-field-wide">
+              <label htmlFor="description">
+                Description
+              </label>
+
+              <textarea
+                id="description"
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Enter product description"
+                rows={4}
+              />
+            </div>
+
+            <div className="form-section-title">
+              Pricing & Inventory
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="mrp">
+                MRP
+              </label>
+
+              <input
+                id="mrp"
+                name="mrp"
+                value={form.mrp}
+                onChange={handleChange}
+                placeholder="e.g. 599"
+                inputMode="decimal"
+              />
+            </div>
+
             <div className="form-field">
               <label htmlFor="price">
                 Selling Price
@@ -557,6 +773,21 @@ export default function ProductsPage() {
             </div>
 
             <div className="form-field">
+              <label htmlFor="costPrice">
+                Cost Price
+              </label>
+
+              <input
+                id="costPrice"
+                name="costPrice"
+                value={form.costPrice}
+                onChange={handleChange}
+                placeholder="e.g. 350"
+                inputMode="decimal"
+              />
+            </div>
+
+            <div className="form-field">
               <label htmlFor="stock">
                 Stock
               </label>
@@ -568,6 +799,160 @@ export default function ProductsPage() {
                 onChange={handleChange}
                 placeholder="e.g. 100"
                 inputMode="numeric"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="minimumStock">
+                Minimum Stock
+              </label>
+
+              <input
+                id="minimumStock"
+                name="minimumStock"
+                value={form.minimumStock}
+                onChange={handleChange}
+                placeholder="e.g. 10"
+                inputMode="numeric"
+              />
+            </div>
+
+            <div className="form-section-title">
+              Batch & Expiry
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="batchNumber">
+                Batch Number
+              </label>
+
+              <input
+                id="batchNumber"
+                name="batchNumber"
+                value={form.batchNumber}
+                onChange={handleChange}
+                placeholder="e.g. BATCH-2026-01"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="manufacturingDate">
+                Manufacturing Date
+              </label>
+
+              <input
+                id="manufacturingDate"
+                name="manufacturingDate"
+                type="date"
+                value={form.manufacturingDate}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="expiryDate">
+                Expiry Date
+              </label>
+
+              <input
+                id="expiryDate"
+                name="expiryDate"
+                type="date"
+                value={form.expiryDate}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-section-title">
+              Supplier & Manufacturer
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="supplier">
+                Supplier
+              </label>
+
+              <input
+                id="supplier"
+                name="supplier"
+                value={form.supplier}
+                onChange={handleChange}
+                placeholder="Supplier name"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="manufacturer">
+                Manufacturer
+              </label>
+
+              <input
+                id="manufacturer"
+                name="manufacturer"
+                value={form.manufacturer}
+                onChange={handleChange}
+                placeholder="Manufacturer name"
+              />
+            </div>
+
+            <div className="form-section-title">
+              Packaging & Origin
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="weight">
+                Weight
+              </label>
+
+              <input
+                id="weight"
+                name="weight"
+                value={form.weight}
+                onChange={handleChange}
+                placeholder="e.g. 500"
+                inputMode="decimal"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="unit">
+                Unit
+              </label>
+
+              <input
+                id="unit"
+                name="unit"
+                value={form.unit}
+                onChange={handleChange}
+                placeholder="e.g. g, kg, ml, pcs"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="countryOfOrigin">
+                Country of Origin
+              </label>
+
+              <input
+                id="countryOfOrigin"
+                name="countryOfOrigin"
+                value={form.countryOfOrigin}
+                onChange={handleChange}
+                placeholder="e.g. India"
+              />
+            </div>
+
+            <div className="form-field form-field-wide">
+              <label htmlFor="productImage">
+                Product Image URL
+              </label>
+
+              <input
+                id="productImage"
+                name="productImage"
+                value={form.productImage}
+                onChange={handleChange}
+                placeholder="https://example.com/product.jpg"
               />
             </div>
 
@@ -701,6 +1086,7 @@ export default function ProductsPage() {
                   <th>SKU</th>
                   <th>Barcode</th>
                   <th>Category</th>
+                  <th>MRP</th>
                   <th>Price</th>
                   <th>Stock</th>
                   <th>Status</th>
@@ -730,6 +1116,12 @@ export default function ProductsPage() {
 
                     <td>
                       {product.category || "—"}
+                    </td>
+
+                    <td>
+                      {product.mrp
+                        ? `₹${product.mrp}`
+                        : "—"}
                     </td>
 
                     <td>
