@@ -2383,3 +2383,67 @@ a {
     flex-direction: column;
   }
 }
+.designer-arrange-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e5eaf2;
+}
+
+.designer-align-group {
+  margin-top: 14px;
+}
+
+.designer-align-label,
+.designer-layer-label {
+  margin-bottom: 7px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.designer-align-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.designer-align-button {
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid #dbe4f0;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.designer-align-button:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.designer-layer-label {
+  margin-top: 16px;
+}
+
+.designer-layer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.designer-layer-grid
+  .designer-align-button {
+  min-height: 36px;
+}
