@@ -892,21 +892,7 @@ export default function LabelDesignerPage() {
     };
   }, [undo, redo]);
 
-  useEffect(() => {
-    if (
-      selectedElementId &&
-      !template.elements.some(
-        (element) =>
-          element.id ===
-          selectedElementId,
-      )
-    ) {
-      setSelectedElementId(null);
-    }
-  }, [
-    template.elements,
-    selectedElementId,
-  ]);
+  
 
   function handleElementPointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
