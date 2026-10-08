@@ -37,6 +37,11 @@ import {
   getProducts,
   type StoredProduct,
 } from "../../lib/storage";
+import {
+  getTemplateById,
+  addTemplate,
+  updateTemplate as updateStoredTemplate,
+} from "../../lib/template-storage";
 
 const CANVAS_SCALE = 3;
 
@@ -1043,47 +1048,32 @@ export default function LabelDesignerPage() {
   }
 
   function saveTemplate() {
-    const key =
-      "labelpro_label_templates";
+  try {
+    const existing =
+      getTemplateById(template.id);
 
-    try {
-      const existing =
-        window.localStorage.getItem(
-          key,
-        );
-
-      const templates: LabelTemplate[] =
-        existing
-          ? JSON.parse(existing)
-          : [];
-
-      const filtered =
-        templates.filter(
-          (item) =>
-            item.id !== template.id,
-        );
-
-      window.localStorage.setItem(
-        key,
-        JSON.stringify([
-          ...filtered,
-          template,
-        ]),
+    if (existing) {
+      updateStoredTemplate(
+        template.id,
+        template,
       );
-
-      setSavedMessage(
-        "Template saved successfully.",
-      );
-
-      window.setTimeout(() => {
-        setSavedMessage("");
-      }, 2500);
-    } catch {
-      setSavedMessage(
-        "Unable to save template.",
-      );
+    } else {
+      addTemplate(template);
     }
+
+    setSavedMessage(
+      "Template saved successfully.",
+    );
+
+    window.setTimeout(() => {
+      setSavedMessage("");
+    }, 2500);
+  } catch {
+    setSavedMessage(
+      "Unable to save template.",
+    );
   }
+}
 
   function createNewTemplate() {
     const newTemplate =
