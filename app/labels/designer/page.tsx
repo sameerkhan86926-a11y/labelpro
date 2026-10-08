@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -183,6 +184,7 @@ function getDefaultText(type: LabelElementType): string {
 
 function getCanvasElementStyle(
   element: LabelElement,
+  zIndex: number,
 ) {
   return {
     position: "absolute" as const,
@@ -192,7 +194,7 @@ function getCanvasElementStyle(
     height: `${element.height * CANVAS_SCALE}px`,
     transform: `rotate(${element.rotation}deg)`,
     opacity: element.opacity ?? 1,
-    zIndex: element.type === "line" ? 2 : 3,
+    zIndex,
     overflow: "hidden" as const,
   };
 }
@@ -233,7 +235,8 @@ function QRElement({
 }: {
   value: string;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef =
+    useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -280,10 +283,23 @@ export default function LabelDesignerPage() {
   const [savedMessage, setSavedMessage] =
     useState("");
 
-  const dragRef = useRef<DragStart | null>(null);
+  const [history, setHistory] =
+    useState<LabelTemplate[]>([]);
+
+  const [future, setFuture] =
+    useState<LabelTemplate[]>([]);
+
+  const dragRef =
+    useRef<DragStart | null>(null);
 
   const resizeRef =
     useRef<ResizeStart | null>(null);
+
+  const dragHistoryRef =
+    useRef<LabelTemplate | null>(null);
+
+  const resizeHistoryRef =
+    useRef<LabelTemplate | null>(null);
 
   const selectedProduct = useMemo(
     () =>
@@ -306,6 +322,42 @@ export default function LabelDesignerPage() {
     ],
   );
 
+  /*
+   * Central history helper.
+   *
+   * Every normal template modification
+   * should go through this function.
+   */
+  const commitTemplateChange = useCallback(
+    (
+      updater: (
+        current: LabelTemplate,
+      ) => LabelTemplate,
+    ) => {
+      setTemplate((current) => {
+        const next = updater(current);
+
+        if (next === current) {
+          return current;
+        }
+
+        setHistory((previous) => [
+          ...previous,
+          current,
+        ]);
+
+        setFuture([]);
+
+        return {
+          ...next,
+          updatedAt:
+            new Date().toISOString(),
+        };
+      });
+    },
+    [],
+  );
+
   function loadProducts() {
     setProducts(getProducts());
   }
@@ -313,11 +365,12 @@ export default function LabelDesignerPage() {
   function updateTemplate(
     updates: Partial<LabelTemplate>,
   ) {
-    setTemplate((current) => ({
-      ...current,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    commitTemplateChange(
+      (current) => ({
+        ...current,
+        ...updates,
+      }),
+    );
   }
 
   function addElement(
@@ -326,40 +379,53 @@ export default function LabelDesignerPage() {
     const defaults =
       ELEMENT_DEFAULTS[type] ?? {};
 
-    const element = createLabelElement(
-      type,
-      {
-        ...defaults,
-        text: getDefaultText(type),
-        x: 5,
-        y: 5,
-      },
-    );
+    const element =
+      createLabelElement(
+        type,
+        {
+          ...defaults,
+          text: getDefaultText(type),
+          x: 5,
+          y: 5,
+        },
+      );
 
-    setTemplate((current) => ({
-      ...current,
-      elements: [
-        ...current.elements,
-        element,
-      ],
-      updatedAt:
-        new Date().toISOString(),
-    }));
+    commitTemplateChange(
+      (current) => ({
+        ...current,
+        elements: [
+          ...current.elements,
+          element,
+        ],
+      }),
+    );
 
     setSelectedElementId(element.id);
   }
 
   function deleteElement(id: string) {
-    setTemplate((current) => ({
-      ...current,
-      elements:
-        current.elements.filter(
-          (element) =>
-            element.id !== id,
-        ),
-      updatedAt:
-        new Date().toISOString(),
-    }));
+    commitTemplateChange(
+      (current) => {
+        const exists =
+          current.elements.some(
+            (element) =>
+              element.id === id,
+          );
+
+        if (!exists) {
+          return current;
+        }
+
+        return {
+          ...current,
+          elements:
+            current.elements.filter(
+              (element) =>
+                element.id !== id,
+            ),
+        };
+      },
+    );
 
     if (selectedElementId === id) {
       setSelectedElementId(null);
@@ -387,26 +453,32 @@ export default function LabelDesignerPage() {
           ...sourceWithoutId,
           x: Math.min(
             source.x + 5,
-            template.size.width -
-              source.width,
+            Math.max(
+              0,
+              template.size.width -
+                source.width,
+            ),
           ),
           y: Math.min(
             source.y + 5,
-            template.size.height -
-              source.height,
+            Math.max(
+              0,
+              template.size.height -
+                source.height,
+            ),
           ),
         },
       );
 
-    setTemplate((current) => ({
-      ...current,
-      elements: [
-        ...current.elements,
-        duplicate,
-      ],
-      updatedAt:
-        new Date().toISOString(),
-    }));
+    commitTemplateChange(
+      (current) => ({
+        ...current,
+        elements: [
+          ...current.elements,
+          duplicate,
+        ],
+      }),
+    );
 
     setSelectedElementId(
       duplicate.id,
@@ -414,6 +486,39 @@ export default function LabelDesignerPage() {
   }
 
   function updateElement(
+    id: string,
+    updates: Partial<LabelElement>,
+  ) {
+    commitTemplateChange(
+      (current) => {
+        const exists =
+          current.elements.some(
+            (element) =>
+              element.id === id,
+          );
+
+        if (!exists) {
+          return current;
+        }
+
+        return {
+          ...current,
+          elements:
+            current.elements.map(
+              (element) =>
+                element.id === id
+                  ? {
+                      ...element,
+                      ...updates,
+                    }
+                  : element,
+            ),
+        };
+      },
+    );
+  }
+
+  function updateElementWithoutHistory(
     id: string,
     updates: Partial<LabelElement>,
   ) {
@@ -429,11 +534,42 @@ export default function LabelDesignerPage() {
                 }
               : element,
         ),
-      updatedAt:
-        new Date().toISOString(),
     }));
   }
-    function alignElement(
+
+  function recordDragHistory() {
+    if (!dragHistoryRef.current) return;
+
+    const snapshot =
+      dragHistoryRef.current;
+
+    setHistory((previous) => [
+      ...previous,
+      snapshot,
+    ]);
+
+    setFuture([]);
+
+    dragHistoryRef.current = null;
+  }
+
+  function recordResizeHistory() {
+    if (!resizeHistoryRef.current) return;
+
+    const snapshot =
+      resizeHistoryRef.current;
+
+    setHistory((previous) => [
+      ...previous,
+      snapshot,
+    ]);
+
+    setFuture([]);
+
+    resizeHistoryRef.current = null;
+  }
+
+  function alignElement(
     alignment:
       | "left"
       | "center"
@@ -444,7 +580,8 @@ export default function LabelDesignerPage() {
   ) {
     if (!selectedElement) return;
 
-    let updates: Partial<LabelElement> = {};
+    let updates: Partial<LabelElement> =
+      {};
 
     switch (alignment) {
       case "left":
@@ -503,148 +640,273 @@ export default function LabelDesignerPage() {
   function bringToFront() {
     if (!selectedElement) return;
 
-    setTemplate((current) => {
-      const selected =
-        current.elements.find(
-          (element) =>
-            element.id ===
-            selectedElement.id,
-        );
+    commitTemplateChange(
+      (current) => {
+        const selected =
+          current.elements.find(
+            (element) =>
+              element.id ===
+              selectedElement.id,
+          );
 
-      if (!selected) return current;
+        if (!selected) {
+          return current;
+        }
 
-      const others =
-        current.elements.filter(
-          (element) =>
-            element.id !==
-            selectedElement.id,
-        );
+        const others =
+          current.elements.filter(
+            (element) =>
+              element.id !==
+              selectedElement.id,
+          );
 
-      return {
-        ...current,
-        elements: [
-          ...others,
-          selected,
-        ],
-        updatedAt:
-          new Date().toISOString(),
-      };
-    });
+        if (
+          others.length === 0
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          elements: [
+            ...others,
+            selected,
+          ],
+        };
+      },
+    );
   }
 
   function sendToBack() {
     if (!selectedElement) return;
 
-    setTemplate((current) => {
-      const selected =
-        current.elements.find(
-          (element) =>
-            element.id ===
-            selectedElement.id,
-        );
+    commitTemplateChange(
+      (current) => {
+        const selected =
+          current.elements.find(
+            (element) =>
+              element.id ===
+              selectedElement.id,
+          );
 
-      if (!selected) return current;
+        if (!selected) {
+          return current;
+        }
 
-      const others =
-        current.elements.filter(
-          (element) =>
-            element.id !==
-            selectedElement.id,
-        );
+        const others =
+          current.elements.filter(
+            (element) =>
+              element.id !==
+              selectedElement.id,
+          );
 
-      return {
-        ...current,
-        elements: [
-          selected,
-          ...others,
-        ],
-        updatedAt:
-          new Date().toISOString(),
-      };
-    });
+        if (
+          others.length === 0
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          elements: [
+            selected,
+            ...others,
+          ],
+        };
+      },
+    );
   }
 
   function moveForward() {
     if (!selectedElement) return;
 
-    setTemplate((current) => {
-      const elements = [
-        ...current.elements,
-      ];
+    commitTemplateChange(
+      (current) => {
+        const elements = [
+          ...current.elements,
+        ];
 
-      const index =
-        elements.findIndex(
-          (element) =>
-            element.id ===
-            selectedElement.id,
-        );
+        const index =
+          elements.findIndex(
+            (element) =>
+              element.id ===
+              selectedElement.id,
+          );
 
-      if (
-        index === -1 ||
-        index ===
-          elements.length - 1
-      ) {
-        return current;
-      }
+        if (
+          index === -1 ||
+          index ===
+            elements.length - 1
+        ) {
+          return current;
+        }
 
-      const nextIndex =
-        index + 1;
+        const nextIndex =
+          index + 1;
 
-      [
-        elements[index],
-        elements[nextIndex],
-      ] = [
-        elements[nextIndex],
-        elements[index],
-      ];
+        [
+          elements[index],
+          elements[nextIndex],
+        ] = [
+          elements[nextIndex],
+          elements[index],
+        ];
 
-      return {
-        ...current,
-        elements,
-        updatedAt:
-          new Date().toISOString(),
-      };
-    });
+        return {
+          ...current,
+          elements,
+        };
+      },
+    );
   }
 
   function moveBackward() {
     if (!selectedElement) return;
 
-    setTemplate((current) => {
-      const elements = [
-        ...current.elements,
-      ];
+    commitTemplateChange(
+      (current) => {
+        const elements = [
+          ...current.elements,
+        ];
 
-      const index =
-        elements.findIndex(
-          (element) =>
-            element.id ===
-            selectedElement.id,
-        );
+        const index =
+          elements.findIndex(
+            (element) =>
+              element.id ===
+              selectedElement.id,
+          );
 
-      if (index <= 0) {
-        return current;
+        if (index <= 0) {
+          return current;
+        }
+
+        const previousIndex =
+          index - 1;
+
+        [
+          elements[index],
+          elements[previousIndex],
+        ] = [
+          elements[previousIndex],
+          elements[index],
+        ];
+
+        return {
+          ...current,
+          elements,
+        };
+      },
+    );
+  }
+
+  const undo = useCallback(() => {
+    setHistory((previous) => {
+      if (previous.length === 0) {
+        return previous;
       }
 
-      const previousIndex =
-        index - 1;
+      const previousTemplate =
+        previous[
+          previous.length - 1
+        ];
 
-      [
-        elements[index],
-        elements[previousIndex],
-      ] = [
-        elements[previousIndex],
-        elements[index],
-      ];
+      setTemplate((current) => {
+        setFuture((futureItems) => [
+          ...futureItems,
+          current,
+        ]);
 
-      return {
-        ...current,
-        elements,
-        updatedAt:
-          new Date().toISOString(),
-      };
+        return previousTemplate;
+      });
+
+      return previous.slice(0, -1);
     });
-  }
+  }, []);
+
+  const redo = useCallback(() => {
+    setFuture((previous) => {
+      if (previous.length === 0) {
+        return previous;
+      }
+
+      const nextTemplate =
+        previous[
+          previous.length - 1
+        ];
+
+      setTemplate((current) => {
+        setHistory((historyItems) => [
+          ...historyItems,
+          current,
+        ]);
+
+        return nextTemplate;
+      });
+
+      return previous.slice(0, -1);
+    });
+  }, []);
+
+  useEffect(() => {
+    function handleKeyboard(
+      event: KeyboardEvent,
+    ) {
+      const modifier =
+        event.ctrlKey ||
+        event.metaKey;
+
+      if (!modifier) return;
+
+      const key =
+        event.key.toLowerCase();
+
+      if (
+        key === "z" &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      if (
+        key === "y" ||
+        (key === "z" &&
+          event.shiftKey)
+      ) {
+        event.preventDefault();
+        redo();
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleKeyboard,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyboard,
+      );
+    };
+  }, [undo, redo]);
+
+  useEffect(() => {
+    if (
+      selectedElementId &&
+      !template.elements.some(
+        (element) =>
+          element.id ===
+          selectedElementId,
+      )
+    ) {
+      setSelectedElementId(null);
+    }
+  }, [
+    template.elements,
+    selectedElementId,
+  ]);
 
   function handleElementPointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
@@ -663,6 +925,9 @@ export default function LabelDesignerPage() {
       elementX: element.x,
       elementY: element.y,
     };
+
+    dragHistoryRef.current =
+      template;
 
     event.currentTarget.setPointerCapture(
       event.pointerId,
@@ -686,7 +951,7 @@ export default function LabelDesignerPage() {
         template.size.height,
       );
 
-    updateElement(
+    updateElementWithoutHistory(
       element.id,
       position,
     );
@@ -696,6 +961,8 @@ export default function LabelDesignerPage() {
     event: ReactPointerEvent<HTMLDivElement>,
   ) {
     dragRef.current = null;
+
+    recordDragHistory();
 
     try {
       event.currentTarget.releasePointerCapture(
@@ -724,6 +991,9 @@ export default function LabelDesignerPage() {
       elementHeight: element.height,
     };
 
+    resizeHistoryRef.current =
+      template;
+
     event.currentTarget.setPointerCapture(
       event.pointerId,
     );
@@ -746,7 +1016,7 @@ export default function LabelDesignerPage() {
         template.size.height,
       );
 
-    updateElement(
+    updateElementWithoutHistory(
       element.id,
       size,
     );
@@ -756,6 +1026,8 @@ export default function LabelDesignerPage() {
     event: ReactPointerEvent<HTMLDivElement>,
   ) {
     resizeRef.current = null;
+
+    recordResizeHistory();
 
     try {
       event.currentTarget.releasePointerCapture(
@@ -836,8 +1108,11 @@ export default function LabelDesignerPage() {
       );
 
     setTemplate(newTemplate);
+    setHistory([]);
+    setFuture([]);
     setSelectedElementId(null);
     setSavedMessage("");
+    setSelectedProductId("");
   }
 
   function changeLabelSize(
@@ -1015,6 +1290,30 @@ export default function LabelDesignerPage() {
         </div>
 
         <div className="designer-header-actions">
+          <button
+            type="button"
+            className="designer-secondary-button"
+            onClick={undo}
+            disabled={
+              history.length === 0
+            }
+            title="Undo (Ctrl+Z)"
+          >
+            Undo
+          </button>
+
+          <button
+            type="button"
+            className="designer-secondary-button"
+            onClick={redo}
+            disabled={
+              future.length === 0
+            }
+            title="Redo (Ctrl+Y)"
+          >
+            Redo
+          </button>
+
           <button
             type="button"
             className="designer-secondary-button"
@@ -1220,6 +1519,7 @@ export default function LabelDesignerPage() {
           <div className="designer-canvas-header">
             <div>
               <h2>Canvas</h2>
+
               <span>
                 {template.size.width} ×{" "}
                 {template.size.height} mm
@@ -1250,7 +1550,7 @@ export default function LabelDesignerPage() {
               }
             >
               {template.elements.map(
-                (element) => (
+                (element, index) => (
                   <div
                     key={element.id}
                     className={getElementClassName(
@@ -1259,18 +1559,13 @@ export default function LabelDesignerPage() {
                     style={{
                       ...getCanvasElementStyle(
                         element,
+                        index + 1,
                       ),
+
                       backgroundColor:
-                        element.type ===
-                          "rectangle" ||
-                        element.type ===
-                          "circle"
-                          ? element
-                              .backgroundColor ||
-                            "transparent"
-                          : element
-                              .backgroundColor ||
-                            "transparent",
+                        element.backgroundColor ||
+                        "transparent",
+
                       border:
                         element.type ===
                           "rectangle" ||
@@ -1287,28 +1582,35 @@ export default function LabelDesignerPage() {
                               element.borderColor ??
                               "transparent"
                             }`,
+
                       borderRadius:
                         element.type ===
                         "circle"
                           ? "50%"
                           : "0",
+
                       color:
                         element.color ??
                         "#111827",
+
                       fontSize: `${
                         (element.fontSize ??
                           12) *
                         CANVAS_SCALE
                       }px`,
+
                       fontWeight:
                         element.fontWeight ??
                         500,
+
                       fontFamily:
                         element.fontFamily ??
                         "Arial",
+
                       textAlign:
                         element.textAlign ??
                         "left",
+
                       justifyContent:
                         element.textAlign ===
                         "center"
@@ -1317,6 +1619,7 @@ export default function LabelDesignerPage() {
                             "right"
                           ? "flex-end"
                           : "flex-start",
+
                       display:
                         element.type ===
                           "rectangle" ||
@@ -1324,6 +1627,7 @@ export default function LabelDesignerPage() {
                           "circle"
                           ? "block"
                           : "flex",
+
                       alignItems:
                         element.type ===
                           "rectangle" ||
@@ -1331,6 +1635,7 @@ export default function LabelDesignerPage() {
                           "circle"
                           ? undefined
                           : "center",
+
                       pointerEvents:
                         element.hidden
                           ? "none"
@@ -1418,6 +1723,7 @@ export default function LabelDesignerPage() {
           <div className="designer-panel-header">
             <div>
               <h2>Properties</h2>
+
               <p>
                 Configure selected
                 element
@@ -1461,7 +1767,9 @@ export default function LabelDesignerPage() {
 
                   <input
                     type="number"
-                    value={selectedElement.x}
+                    value={
+                      selectedElement.x
+                    }
                     onChange={(event) =>
                       updateElement(
                         selectedElement.id,
@@ -1482,7 +1790,9 @@ export default function LabelDesignerPage() {
 
                   <input
                     type="number"
-                    value={selectedElement.y}
+                    value={
+                      selectedElement.y
+                    }
                     onChange={(event) =>
                       updateElement(
                         selectedElement.id,
@@ -1868,7 +2178,8 @@ export default function LabelDesignerPage() {
                   </div>
                 </div>
               )}
-                            <div className="designer-arrange-section">
+
+              <div className="designer-arrange-section">
                 <div className="designer-section-title">
                   Arrange & Align
                 </div>
@@ -1888,7 +2199,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("left")
+                        alignElement(
+                          "left",
+                        )
                       }
                       title="Align Left"
                     >
@@ -1899,7 +2212,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("center")
+                        alignElement(
+                          "center",
+                        )
                       }
                       title="Align Center"
                     >
@@ -1910,7 +2225,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("right")
+                        alignElement(
+                          "right",
+                        )
                       }
                       title="Align Right"
                     >
@@ -1929,7 +2246,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("top")
+                        alignElement(
+                          "top",
+                        )
                       }
                       title="Align Top"
                     >
@@ -1940,7 +2259,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("middle")
+                        alignElement(
+                          "middle",
+                        )
                       }
                       title="Align Middle"
                     >
@@ -1951,7 +2272,9 @@ export default function LabelDesignerPage() {
                       type="button"
                       className="designer-align-button"
                       onClick={() =>
-                        alignElement("bottom")
+                        alignElement(
+                          "bottom",
+                        )
                       }
                       title="Align Bottom"
                     >
@@ -1968,7 +2291,9 @@ export default function LabelDesignerPage() {
                   <button
                     type="button"
                     className="designer-align-button"
-                    onClick={bringToFront}
+                    onClick={
+                      bringToFront
+                    }
                   >
                     Bring Front
                   </button>
@@ -1976,7 +2301,9 @@ export default function LabelDesignerPage() {
                   <button
                     type="button"
                     className="designer-align-button"
-                    onClick={sendToBack}
+                    onClick={
+                      sendToBack
+                    }
                   >
                     Send Back
                   </button>
@@ -1984,7 +2311,9 @@ export default function LabelDesignerPage() {
                   <button
                     type="button"
                     className="designer-align-button"
-                    onClick={moveForward}
+                    onClick={
+                      moveForward
+                    }
                   >
                     Move Up
                   </button>
@@ -1992,7 +2321,9 @@ export default function LabelDesignerPage() {
                   <button
                     type="button"
                     className="designer-align-button"
-                    onClick={moveBackward}
+                    onClick={
+                      moveBackward
+                    }
                   >
                     Move Down
                   </button>
