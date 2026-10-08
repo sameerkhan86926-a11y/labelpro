@@ -1,17 +1,19 @@
 "use client";
 
 import {
-  PointerEvent as ReactPointerEvent,
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
+
 import {
   calculateDragPosition,
   calculateResize,
   type DragStart,
   type ResizeStart,
 } from "../../lib/label-editor";
+
 import {
   createLabelElement,
   createLabelTemplate,
@@ -21,6 +23,18 @@ import {
   type LabelElementType,
   type LabelTemplate,
 } from "../../lib/label-types";
+
+import {
+  DYNAMIC_FIELDS,
+  getElementDisplayText,
+} from "../../lib/label-render";
+
+import {
+  getProducts,
+  type StoredProduct,
+} from "../../lib/storage";
+
+const CANVAS_SCALE = 3;
 
 const TOOL_ELEMENTS: LabelElementType[] = [
   "text",
@@ -42,183 +56,500 @@ const TOOL_ELEMENTS: LabelElementType[] = [
   "custom",
 ];
 
-const FIELD_PREVIEWS: Record<string, string> = {
-  product_name: "Premium Product",
-  sku: "SKU-10001",
-  barcode: "8901234567890",
-  qr: "QR",
-  price: "₹499",
-  mrp: "MRP ₹599",
-  batch: "BATCH-001",
-  expiry: "31/12/2027",
-  manufacturing_date: "01/01/2026",
+const ELEMENT_DEFAULTS: Partial<
+  Record<LabelElementType, Partial<LabelElement>>
+> = {
+  heading: {
+    width: 80,
+    height: 12,
+    fontSize: 16,
+    fontWeight: 700,
+    text: "Heading",
+  },
+
+  text: {
+    width: 80,
+    height: 10,
+    fontSize: 11,
+    text: "Text",
+  },
+
+  product_name: {
+    width: 80,
+    height: 12,
+    fontSize: 14,
+    fontWeight: 700,
+    field: "{{product_name}}",
+  },
+
+  sku: {
+    width: 55,
+    height: 10,
+    fontSize: 10,
+    field: "{{sku}}",
+  },
+
+  barcode: {
+    width: 75,
+    height: 24,
+  },
+
+  qr: {
+    width: 30,
+    height: 30,
+  },
+
+  price: {
+    width: 45,
+    height: 12,
+    fontSize: 14,
+    fontWeight: 700,
+    field: "{{price}}",
+  },
+
+  mrp: {
+    width: 45,
+    height: 10,
+    fontSize: 10,
+    field: "{{mrp}}",
+  },
+
+  batch: {
+    width: 55,
+    height: 10,
+    fontSize: 10,
+    field: "{{batch}}",
+  },
+
+  expiry: {
+    width: 55,
+    height: 10,
+    fontSize: 10,
+    field: "{{expiry}}",
+  },
+
+  manufacturing_date: {
+    width: 55,
+    height: 10,
+    fontSize: 10,
+    field: "{{manufacturing_date}}",
+  },
+
+  image: {
+    width: 30,
+    height: 30,
+  },
+
+  logo: {
+    width: 35,
+    height: 20,
+  },
+
+  line: {
+    width: 80,
+    height: 1,
+    backgroundColor: "#111827",
+    borderWidth: 0,
+  },
+
+  rectangle: {
+    width: 60,
+    height: 30,
+    backgroundColor: "transparent",
+    borderColor: "#111827",
+    borderWidth: 1,
+  },
+
+  circle: {
+    width: 30,
+    height: 30,
+    backgroundColor: "transparent",
+    borderColor: "#111827",
+    borderWidth: 1,
+  },
+
+  custom: {
+    width: 80,
+    height: 10,
+    fontSize: 11,
+    text: "{{category}}",
+  },
 };
 
-const CANVAS_SCALE = 3;
+function getDefaultText(type: LabelElementType) {
+  switch (type) {
+    case "heading":
+      return "Heading";
 
-function elementPreview(element: LabelElement) {
-  if (element.type === "text") {
-    return element.text || "Sample Text";
+    case "text":
+      return "Text";
+
+    case "custom":
+      return "{{category}}";
+
+    default:
+      return "";
+  }
+}
+
+function getCanvasElementStyle(
+  element: LabelElement,
+) {
+  const style: React.CSSProperties = {
+    left: `${element.x * CANVAS_SCALE}px`,
+    top: `${element.y * CANVAS_SCALE}px`,
+    width: `${element.width * CANVAS_SCALE}px`,
+    height: `${element.height * CANVAS_SCALE}px`,
+    transform: `rotate(${element.rotation}deg)`,
+    opacity: element.opacity ?? 1,
+    color: element.color ?? "#111827",
+    backgroundColor:
+      element.backgroundColor ?? "transparent",
+    borderColor:
+      element.borderColor ?? "#111827",
+    borderWidth: `${element.borderWidth ?? 1}px`,
+    fontSize: `${(element.fontSize ?? 12) * CANVAS_SCALE}px`,
+    fontWeight: element.fontWeight ?? 500,
+    fontFamily:
+      element.fontFamily ?? "Arial",
+    textAlign:
+      element.textAlign ?? "left",
+    zIndex: element.type === "line" ? 2 : 1,
+  };
+
+  if (
+    element.type === "line"
+  ) {
+    style.backgroundColor =
+      element.backgroundColor ??
+      "#111827";
   }
 
-  if (element.type === "heading") {
-    return element.text || "Product Label";
-  }
-
-  return FIELD_PREVIEWS[element.type] || LABEL_ELEMENT_LABELS[element.type];
+  return style;
 }
 
 export default function LabelDesignerPage() {
-  const [template, setTemplate] = useState<LabelTemplate>(() =>
-    createLabelTemplate("New Product Label", 50, 25),
+  const [template, setTemplate] =
+    useState<LabelTemplate>(() =>
+      createLabelTemplate(
+        "New Product Label",
+        50,
+        25,
+      ),
+    );
+
+  const [selectedElementId, setSelectedElementId] =
+    useState<string | null>(null);
+
+  const [products, setProducts] =
+    useState<StoredProduct[]>([]);
+
+  const [selectedProductId, setSelectedProductId] =
+    useState("");
+
+  const [savedMessage, setSavedMessage] =
+    useState("");
+
+  const dragRef =
+    useRef<DragStart | null>(null);
+
+  const resizeRef =
+    useRef<ResizeStart | null>(null);
+
+  const draggingElementId =
+    useRef<string | null>(null);
+
+  const resizingElementId =
+    useRef<string | null>(null);
+
+  const selectedProduct = useMemo(
+    () =>
+      products.find(
+        (product) =>
+          product.id === selectedProductId,
+      ) ?? null,
+    [products, selectedProductId],
   );
-
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-
-  const [resizingId, setResizingId] = useState<string | null>(null);
-
-  const dragRef = useRef<DragStart | null>(null);
-
-  const resizeRef = useRef<ResizeStart | null>(null);
-
-  const resizeElementRef = useRef<LabelElement | null>(null);
 
   const selectedElement = useMemo(
     () =>
       template.elements.find(
-        (element) => element.id === selectedId,
+        (element) =>
+          element.id === selectedElementId,
       ) ?? null,
-    [template.elements, selectedId],
+    [template.elements, selectedElementId],
   );
 
-  const updateTemplate = (updates: Partial<LabelTemplate>) => {
+  const canvasWidth =
+    template.size.width *
+    CANVAS_SCALE;
+
+  const canvasHeight =
+    template.size.height *
+    CANVAS_SCALE;
+
+  function loadProducts() {
+    const storedProducts = getProducts();
+    setProducts(storedProducts);
+
+    if (
+      storedProducts.length > 0 &&
+      !selectedProductId
+    ) {
+      setSelectedProductId(
+        storedProducts[0].id,
+      );
+    }
+  }
+
+  function updateTemplate(
+    updates: Partial<LabelTemplate>,
+  ) {
     setTemplate((current) => ({
       ...current,
       ...updates,
       updatedAt: new Date().toISOString(),
     }));
-  };
+  }
 
-  const updateElement = (
+  function addElement(
+    type: LabelElementType,
+  ) {
+    const defaults =
+      ELEMENT_DEFAULTS[type] ?? {};
+
+    const element =
+      createLabelElement(type, {
+        ...defaults,
+        text:
+          defaults.text ??
+          getDefaultText(type),
+      });
+
+    setTemplate((current) => ({
+      ...current,
+      elements: [
+        ...current.elements,
+        element,
+      ],
+      updatedAt:
+        new Date().toISOString(),
+    }));
+
+    setSelectedElementId(element.id);
+  }
+
+  function updateElement(
     id: string,
     updates: Partial<LabelElement>,
-  ) => {
+  ) {
     setTemplate((current) => ({
       ...current,
-      elements: current.elements.map((element) =>
-        element.id === id
-          ? {
-              ...element,
-              ...updates,
-            }
-          : element,
+      elements: current.elements.map(
+        (element) =>
+          element.id === id
+            ? {
+                ...element,
+                ...updates,
+              }
+            : element,
       ),
-      updatedAt: new Date().toISOString(),
+      updatedAt:
+        new Date().toISOString(),
     }));
-  };
+  }
 
-  const addElement = (type: LabelElementType) => {
-    const element = createLabelElement(type);
+  function deleteElement(id: string) {
+    setTemplate((current) => ({
+      ...current,
+      elements: current.elements.filter(
+        (element) =>
+          element.id !== id,
+      ),
+      updatedAt:
+        new Date().toISOString(),
+    }));
 
-    const offset = template.elements.length * 2;
+    setSelectedElementId(null);
+  }
 
-    element.x = Math.min(
-      10 + offset,
-      Math.max(0, template.size.width - element.width),
-    );
+  function duplicateElement(id: string) {
+    const source =
+      template.elements.find(
+        (element) =>
+          element.id === id,
+      );
 
-    element.y = Math.min(
-      10 + offset,
-      Math.max(0, template.size.height - element.height),
-    );
+    if (!source) return;
 
-    if (type === "heading") {
-      element.width = 80;
-      element.height = 12;
-      element.fontSize = 18;
-      element.fontWeight = 700;
-      element.text = "Product Label";
-      element.textAlign = "center";
-    }
-
-    if (type === "text") {
-      element.width = 70;
-      element.height = 10;
-      element.text = "Sample Text";
-    }
-
-    if (type === "product_name") {
-      element.width = 80;
-      element.height = 12;
-      element.fontSize = 14;
-      element.fontWeight = 700;
-      element.textAlign = "center";
-    }
-
-    if (type === "barcode") {
-      element.width = 75;
-      element.height = 20;
-    }
-
-    if (type === "qr") {
-      element.width = 25;
-      element.height = 25;
-    }
-
-    if (type === "line") {
-      element.width = 80;
-      element.height = 2;
-      element.backgroundColor = "#111827";
-    }
-
-    if (type === "rectangle") {
-      element.width = 80;
-      element.height = 30;
-      element.backgroundColor = "transparent";
-      element.borderColor = "#111827";
-      element.borderWidth = 1;
-    }
-
-    if (type === "circle") {
-      element.width = 25;
-      element.height = 25;
-      element.backgroundColor = "transparent";
-      element.borderColor = "#111827";
-      element.borderWidth = 1;
-    }
-
-    element.x = Math.min(
-      element.x,
-      Math.max(0, template.size.width - element.width),
-    );
-
-    element.y = Math.min(
-      element.y,
-      Math.max(0, template.size.height - element.height),
-    );
+    const duplicate =
+      createLabelElement(
+        source.type,
+        {
+          ...source,
+          id: undefined,
+          x: Math.min(
+            source.x + 5,
+            template.size.width -
+              source.width,
+          ),
+          y: Math.min(
+            source.y + 5,
+            template.size.height -
+              source.height,
+          ),
+        },
+      );
 
     setTemplate((current) => ({
       ...current,
-      elements: [...current.elements, element],
-      updatedAt: new Date().toISOString(),
+      elements: [
+        ...current.elements,
+        duplicate,
+      ],
+      updatedAt:
+        new Date().toISOString(),
     }));
 
-    setSelectedId(element.id);
-  };
+    setSelectedElementId(
+      duplicate.id,
+    );
+  }
 
-  const startDragging = (
-    event: ReactPointerEvent<HTMLButtonElement>,
+  function moveElement(
+    id: string,
+    direction:
+      | "left"
+      | "right"
+      | "up"
+      | "down",
+  ) {
+    const element =
+      template.elements.find(
+        (item) => item.id === id,
+      );
+
+    if (!element || element.locked) {
+      return;
+    }
+
+    const step = 1;
+
+    let x = element.x;
+    let y = element.y;
+
+    if (direction === "left") {
+      x -= step;
+    }
+
+    if (direction === "right") {
+      x += step;
+    }
+
+    if (direction === "up") {
+      y -= step;
+    }
+
+    if (direction === "down") {
+      y += step;
+    }
+
+    updateElement(id, {
+      x: Math.max(
+        0,
+        Math.min(
+          x,
+          template.size.width -
+            element.width,
+        ),
+      ),
+      y: Math.max(
+        0,
+        Math.min(
+          y,
+          template.size.height -
+            element.height,
+        ),
+      ),
+    });
+  }
+
+  function saveTemplate() {
+    try {
+      const key =
+        "labelpro_templates";
+
+      const existing =
+        JSON.parse(
+          window.localStorage.getItem(
+            key,
+          ) ?? "[]",
+        );
+
+      const templates =
+        Array.isArray(existing)
+          ? existing
+          : [];
+
+      const index =
+        templates.findIndex(
+          (item: LabelTemplate) =>
+            item.id === template.id,
+        );
+
+      if (index >= 0) {
+        templates[index] = template;
+      } else {
+        templates.push(template);
+      }
+
+      window.localStorage.setItem(
+        key,
+        JSON.stringify(templates),
+      );
+
+      setSavedMessage(
+        "Template saved successfully.",
+      );
+
+      window.setTimeout(() => {
+        setSavedMessage("");
+      }, 2500);
+    } catch {
+      setSavedMessage(
+        "Unable to save template.",
+      );
+    }
+  }
+
+  function clearCanvas() {
+    setTemplate((current) => ({
+      ...current,
+      elements: [],
+      updatedAt:
+        new Date().toISOString(),
+    }));
+
+    setSelectedElementId(null);
+  }
+
+  function handlePointerDown(
+    event: ReactPointerEvent<HTMLDivElement>,
     element: LabelElement,
-  ) => {
-    if (element.locked) return;
+  ) {
+    if (
+      element.locked ||
+      resizingElementId.current
+    ) {
+      return;
+    }
 
-    event.preventDefault();
     event.stopPropagation();
 
-    setSelectedId(element.id);
-    setDraggingId(element.id);
+    setSelectedElementId(element.id);
+
+    draggingElementId.current =
+      element.id;
 
     dragRef.current = {
       pointerX: event.clientX,
@@ -227,65 +558,69 @@ export default function LabelDesignerPage() {
       elementY: element.y,
     };
 
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
+    event.currentTarget.setPointerCapture(
+      event.pointerId,
+    );
+  }
 
-  const handleElementPointerMove = (
-    event: ReactPointerEvent<HTMLButtonElement>,
+  function handlePointerMove(
+    event: ReactPointerEvent<HTMLDivElement>,
     element: LabelElement,
-  ) => {
+  ) {
     if (
-      !draggingId ||
-      draggingId !== element.id ||
-      !dragRef.current ||
-      element.locked
+      draggingElementId.current !==
+        element.id ||
+      !dragRef.current
     ) {
       return;
     }
 
-    const position = calculateDragPosition(
-      dragRef.current,
-      event.clientX,
-      event.clientY,
-      CANVAS_SCALE,
-      element,
-      template.size.width,
-      template.size.height,
-    );
+    const position =
+      calculateDragPosition(
+        dragRef.current,
+        event.clientX,
+        event.clientY,
+        CANVAS_SCALE,
+        element,
+        template.size.width,
+        template.size.height,
+      );
 
-    updateElement(element.id, position);
-  };
+    updateElement(element.id, {
+      x: position.x,
+      y: position.y,
+    });
+  }
 
-  const stopDragging = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
-    if (draggingId) {
-      try {
-        event.currentTarget.releasePointerCapture(
-          event.pointerId,
-        );
-      } catch {
-        // Pointer capture may already be released.
-      }
+  function handlePointerUp(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    if (
+      event.currentTarget.hasPointerCapture(
+        event.pointerId,
+      )
+    ) {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId,
+      );
     }
 
-    setDraggingId(null);
+    draggingElementId.current = null;
     dragRef.current = null;
-  };
+  }
 
-  const startResize = (
+  function handleResizeDown(
     event: ReactPointerEvent<HTMLDivElement>,
     element: LabelElement,
-  ) => {
+  ) {
     if (element.locked) return;
 
-    event.preventDefault();
     event.stopPropagation();
 
-    setSelectedId(element.id);
-    setResizingId(element.id);
+    setSelectedElementId(element.id);
 
-    resizeElementRef.current = element;
+    resizingElementId.current =
+      element.id;
 
     resizeRef.current = {
       pointerX: event.clientX,
@@ -294,183 +629,157 @@ export default function LabelDesignerPage() {
       elementHeight: element.height,
     };
 
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
+    event.currentTarget.setPointerCapture(
+      event.pointerId,
+    );
+  }
 
-  const handleResizeMove = (
+  function handleResizeMove(
     event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
+    element: LabelElement,
+  ) {
     if (
-      !resizingId ||
-      !resizeRef.current ||
-      !resizeElementRef.current
+      resizingElementId.current !==
+        element.id ||
+      !resizeRef.current
     ) {
       return;
     }
 
-    const element = resizeElementRef.current;
+    const size =
+      calculateResize(
+        resizeRef.current,
+        event.clientX,
+        event.clientY,
+        CANVAS_SCALE,
+        element,
+        template.size.width,
+        template.size.height,
+      );
 
-    const size = calculateResize(
-      resizeRef.current,
-      event.clientX,
-      event.clientY,
-      CANVAS_SCALE,
-      element,
-      template.size.width,
-      template.size.height,
-    );
+    updateElement(element.id, {
+      width: size.width,
+      height: size.height,
+    });
+  }
 
-    updateElement(element.id, size);
-  };
-
-  const stopResize = (
+  function handleResizeUp(
     event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    if (resizingId) {
-      try {
-        event.currentTarget.releasePointerCapture(
-          event.pointerId,
-        );
-      } catch {
-        // Pointer capture may already be released.
-      }
+  ) {
+    if (
+      event.currentTarget.hasPointerCapture(
+        event.pointerId,
+      )
+    ) {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId,
+      );
     }
 
-    setResizingId(null);
+    resizingElementId.current = null;
     resizeRef.current = null;
-    resizeElementRef.current = null;
-  };
+  }
 
-  const deleteSelected = () => {
-    if (!selectedId) return;
-
-    setTemplate((current) => ({
-      ...current,
-      elements: current.elements.filter(
-        (element) => element.id !== selectedId,
-      ),
-      updatedAt: new Date().toISOString(),
-    }));
-
-    setSelectedId(null);
-  };
-
-  const duplicateSelected = () => {
+  function insertDynamicField(
+    field: string,
+  ) {
     if (!selectedElement) return;
 
-    const duplicate: LabelElement = {
-      ...selectedElement,
-      id: crypto.randomUUID(),
-      x: Math.min(
-        selectedElement.x + 5,
-        Math.max(
-          0,
-          template.size.width - selectedElement.width,
-        ),
-      ),
-      y: Math.min(
-        selectedElement.y + 5,
-        Math.max(
-          0,
-          template.size.height - selectedElement.height,
-        ),
-      ),
-    };
-
-    setTemplate((current) => ({
-      ...current,
-      elements: [...current.elements, duplicate],
-      updatedAt: new Date().toISOString(),
-    }));
-
-    setSelectedId(duplicate.id);
-  };
-
-  const moveSelected = (
-    direction: "up" | "down" | "left" | "right",
-  ) => {
-    if (!selectedElement || selectedElement.locked) return;
-
-    const amount = 1;
-
-    const nextX =
-      direction === "left"
-        ? selectedElement.x - amount
-        : direction === "right"
-          ? selectedElement.x + amount
-          : selectedElement.x;
-
-    const nextY =
-      direction === "up"
-        ? selectedElement.y - amount
-        : direction === "down"
-          ? selectedElement.y + amount
-          : selectedElement.y;
-
-    updateElement(selectedElement.id, {
-      x: Math.max(
-        0,
-        Math.min(
-          nextX,
-          template.size.width - selectedElement.width,
-        ),
-      ),
-      y: Math.max(
-        0,
-        Math.min(
-          nextY,
-          template.size.height - selectedElement.height,
-        ),
-      ),
-    });
-  };
-
-  const saveTemplate = () => {
-    const templates = JSON.parse(
-      localStorage.getItem("labelpro_templates") || "[]",
+    updateElement(
+      selectedElement.id,
+      {
+        text: field,
+        field,
+      },
     );
+  }
 
-    const existingIndex = templates.findIndex(
-      (item: LabelTemplate) => item.id === template.id,
-    );
-
-    if (existingIndex >= 0) {
-      templates[existingIndex] = template;
-    } else {
-      templates.push(template);
+  function renderElementContent(
+    element: LabelElement,
+  ) {
+    if (
+      element.type === "barcode"
+    ) {
+      return (
+        <div className="designer-barcode-preview">
+          ||||||||||||||||||||||||||
+          <br />
+          {selectedProduct?.barcode ||
+            "BARCODE"}
+        </div>
+      );
     }
 
-    localStorage.setItem(
-      "labelpro_templates",
-      JSON.stringify(templates),
+    if (element.type === "qr") {
+      return (
+        <div className="designer-qr-preview">
+          QR
+        </div>
+      );
+    }
+
+    if (
+      element.type === "image" ||
+      element.type === "logo"
+    ) {
+      if (element.imageUrl) {
+        return (
+          <img
+            src={element.imageUrl}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+            }}
+          />
+        );
+      }
+
+      return (
+        <div className="designer-image-placeholder">
+          {element.type === "logo"
+            ? "LOGO"
+            : "IMAGE"}
+        </div>
+      );
+    }
+
+    if (
+      element.type === "line"
+    ) {
+      return null;
+    }
+
+    if (
+      element.type ===
+        "rectangle" ||
+      element.type === "circle"
+    ) {
+      return null;
+    }
+
+    return getElementDisplayText(
+      element,
+      selectedProduct,
     );
-
-    alert("Template saved successfully.");
-  };
-
-  const clearCanvas = () => {
-    if (!confirm("Remove all elements from this label?")) return;
-
-    setTemplate((current) => ({
-      ...current,
-      elements: [],
-      updatedAt: new Date().toISOString(),
-    }));
-
-    setSelectedId(null);
-  };
+  }
 
   return (
     <main className="module-page label-designer-page">
       <div className="module-header">
         <div>
-          <span className="eyebrow">LABEL DESIGNER</span>
+          <span className="eyebrow">
+            LABEL DESIGNER
+          </span>
 
-          <h2>Professional Label Designer</h2>
+          <h2>
+            Professional Label Designer
+          </h2>
 
           <p>
-            Create reusable product labels with dynamic fields,
-            barcodes, QR codes and custom elements.
+            Design reusable labels with
+            real product data.
           </p>
         </div>
 
@@ -493,10 +802,12 @@ export default function LabelDesignerPage() {
         </div>
       </div>
 
-      <section className="designer-toolbar">
+      <div className="designer-toolbar">
         <div className="designer-toolbar-group">
           <label>
-            <span>Template Name</span>
+            <span>
+              Template Name
+            </span>
 
             <input
               type="text"
@@ -510,14 +821,17 @@ export default function LabelDesignerPage() {
           </label>
 
           <label>
-            <span>Label Size</span>
+            <span>
+              Label Size
+            </span>
 
             <select
               value={`${template.size.width}x${template.size.height}`}
               onChange={(event) => {
-                const [width, height] = event.target.value
-                  .split("x")
-                  .map(Number);
+                const [width, height] =
+                  event.target.value
+                    .split("x")
+                    .map(Number);
 
                 updateTemplate({
                   size: {
@@ -528,290 +842,328 @@ export default function LabelDesignerPage() {
                 });
               }}
             >
-              {DEFAULT_LABEL_SIZES.map((size) => (
-                <option
-                  key={`${size.width}x${size.height}`}
-                  value={`${size.width}x${size.height}`}
-                >
-                  {size.name}
-                </option>
-              ))}
+              {DEFAULT_LABEL_SIZES.map(
+                (size) => (
+                  <option
+                    key={`${size.width}x${size.height}`}
+                    value={`${size.width}x${size.height}`}
+                  >
+                    {size.name}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
           <label>
-            <span>Background</span>
+            <span>
+              Preview Product
+            </span>
 
-            <input
-              className="designer-color-input"
-              type="color"
-              value={template.backgroundColor}
+            <select
+              value={selectedProductId}
               onChange={(event) =>
-                updateTemplate({
-                  backgroundColor: event.target.value,
-                })
+                setSelectedProductId(
+                  event.target.value,
+                )
               }
-            />
+              onFocus={loadProducts}
+            >
+              <option value="">
+                Select Product
+              </option>
+
+              {products.map(
+                (product) => (
+                  <option
+                    key={product.id}
+                    value={product.id}
+                  >
+                    {product.name}
+                    {product.sku
+                      ? ` — ${product.sku}`
+                      : ""}
+                  </option>
+                ),
+              )}
+            </select>
           </label>
         </div>
 
         <div className="designer-toolbar-status">
           <span>
-            {template.elements.length} elements
+            {template.size.width} ×{" "}
+            {template.size.height} mm
           </span>
 
           <span>
-            {template.size.width} × {template.size.height} mm
+            {template.elements.length} elements
           </span>
-        </div>
-      </section>
 
-      <section className="label-designer-workspace">
-        <aside className="designer-panel designer-elements-panel">
+          {selectedProduct && (
+            <span>
+              Product:{" "}
+              {selectedProduct.name}
+            </span>
+          )}
+
+          {savedMessage && (
+            <span>
+              {savedMessage}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="label-designer-workspace">
+        <section className="designer-panel designer-elements-panel">
           <div className="designer-panel-heading">
             <div>
-              <span className="eyebrow">ELEMENTS</span>
+              <span className="eyebrow">
+                ELEMENTS
+              </span>
 
-              <h3>Add Elements</h3>
+              <h3>
+                Add to Label
+              </h3>
             </div>
           </div>
 
           <div className="element-tool-grid">
-            {TOOL_ELEMENTS.map((type) => (
-              <button
-                key={type}
-                type="button"
-                className="element-tool"
-                onClick={() => addElement(type)}
-              >
-                <strong>
-                  {LABEL_ELEMENT_LABELS[type]}
-                </strong>
+            {TOOL_ELEMENTS.map(
+              (type) => (
+                <button
+                  key={type}
+                  className="element-tool"
+                  type="button"
+                  onClick={() =>
+                    addElement(type)
+                  }
+                >
+                  <strong>
+                    {
+                      LABEL_ELEMENT_LABELS[
+                        type
+                      ]
+                    }
+                  </strong>
 
-                <span>+ Add</span>
-              </button>
-            ))}
+                  <span>
+                    +
+                  </span>
+                </button>
+              ),
+            )}
           </div>
-        </aside>
+
+          <div
+            className="property-section"
+            style={{
+              marginTop: 20,
+            }}
+          >
+            <div className="property-section-title">
+              Dynamic Fields
+            </div>
+
+            <div className="element-tool-grid">
+              {DYNAMIC_FIELDS.map(
+                (field) => (
+                  <button
+                    key={field.value}
+                    className="element-tool"
+                    type="button"
+                    disabled={
+                      !selectedElement
+                    }
+                    onClick={() =>
+                      insertDynamicField(
+                        field.value,
+                      )
+                    }
+                  >
+                    <strong>
+                      {field.label}
+                    </strong>
+
+                    <span>
+                      +
+                    </span>
+                  </button>
+                ),
+              )}
+            </div>
+          </div>
+        </section>
 
         <section className="designer-canvas-panel">
           <div className="designer-canvas-header">
             <div>
-              <span className="eyebrow">CANVAS</span>
+              <span className="eyebrow">
+                CANVAS
+              </span>
 
-              <h3>Label Preview</h3>
+              <h3>
+                {template.name}
+              </h3>
             </div>
 
-            {selectedElement && (
-              <span className="designer-selection-badge">
-                Selected:{" "}
-                {LABEL_ELEMENT_LABELS[selectedElement.type]}
-              </span>
-            )}
+            <span className="designer-selection-badge">
+              {selectedElement
+                ? `${LABEL_ELEMENT_LABELS[selectedElement.type]} selected`
+                : "Select an element"}
+            </span>
           </div>
 
           <div className="designer-canvas-stage">
             <div
               className="label-canvas"
               style={{
-                width: `${template.size.width * CANVAS_SCALE}px`,
-                height: `${template.size.height * CANVAS_SCALE}px`,
-                backgroundColor: template.backgroundColor,
+                width: canvasWidth,
+                height: canvasHeight,
+                backgroundColor:
+                  template.backgroundColor,
               }}
-              onClick={() => setSelectedId(null)}
+              onPointerDown={() =>
+                setSelectedElementId(null)
+              }
             >
-              {template.elements.map((element) => {
-                if (element.hidden) return null;
+              {template.elements.map(
+                (element) => {
+                  if (element.hidden) {
+                    return null;
+                  }
 
-                const isSelected =
-                  element.id === selectedId;
+                  const isSelected =
+                    element.id ===
+                    selectedElementId;
 
-                const commonStyle = {
-                  left: `${element.x * CANVAS_SCALE}px`,
-                  top: `${element.y * CANVAS_SCALE}px`,
-                  width: `${element.width * CANVAS_SCALE}px`,
-                  height: `${element.height * CANVAS_SCALE}px`,
-                  transform: `rotate(${element.rotation}deg)`,
-                  opacity: element.opacity ?? 1,
-                  color: element.color ?? "#111827",
-                  backgroundColor:
-                    element.backgroundColor ??
-                    "transparent",
-                  borderColor:
-                    element.borderColor ??
-                    "#111827",
-                  borderWidth: `${element.borderWidth ?? 0}px`,
-                  fontSize: `${Math.max(
-                    7,
-                    (element.fontSize ?? 12) * 0.75,
-                  )}px`,
-                  fontWeight:
-                    element.fontWeight ?? 500,
-                  fontFamily:
-                    element.fontFamily ?? "Arial",
-                  textAlign:
-                    element.textAlign ?? "left",
-                };
-
-                if (element.type === "line") {
                   return (
-                    <button
+                    <div
                       key={element.id}
-                      type="button"
-                      className={`label-element label-line ${
-                        isSelected ? "selected" : ""
-                      }`}
-                      style={commonStyle}
-                      onPointerDown={(event) =>
-                        startDragging(event, element)
-                      }
-                      onPointerMove={(event) =>
-                        handleElementPointerMove(
-                          event,
-                          element,
-                        )
-                      }
-                      onPointerUp={stopDragging}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedId(element.id);
-                      }}
-                    />
-                  );
-                }
-
-                if (
-                  element.type === "rectangle" ||
-                  element.type === "circle"
-                ) {
-                  return (
-                    <button
-                      key={element.id}
-                      type="button"
-                      className={`label-element label-shape ${
-                        element.type === "circle"
-                          ? "label-circle"
+                      className={`label-element ${
+                        isSelected
+                          ? "selected"
                           : ""
                       } ${
-                        isSelected ? "selected" : ""
+                        element.type ===
+                          "line"
+                          ? "label-line"
+                          : ""
+                      } ${
+                        element.type ===
+                          "rectangle" ||
+                        element.type ===
+                          "circle"
+                          ? "label-shape"
+                          : ""
+                      } ${
+                        element.type ===
+                          "circle"
+                          ? "label-circle"
+                          : ""
                       }`}
-                      style={commonStyle}
-                      onPointerDown={(event) =>
-                        startDragging(event, element)
-                      }
-                      onPointerMove={(event) =>
-                        handleElementPointerMove(
+                      style={getCanvasElementStyle(
+                        element,
+                      )}
+                      onPointerDown={(
+                        event,
+                      ) =>
+                        handlePointerDown(
                           event,
                           element,
                         )
                       }
-                      onPointerUp={stopDragging}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedId(element.id);
-                      }}
-                    >
-                      {isSelected && (
-                        <ResizeHandle
-                          onPointerDown={(event) =>
-                            startResize(event, element)
-                          }
-                          onPointerMove={
-                            handleResizeMove
-                          }
-                          onPointerUp={stopResize}
-                        />
-                      )}
-                    </button>
-                  );
-                }
-
-                return (
-                  <button
-                    key={element.id}
-                    type="button"
-                    className={`label-element ${
-                      isSelected ? "selected" : ""
-                    }`}
-                    style={commonStyle}
-                    onPointerDown={(event) =>
-                      startDragging(event, element)
-                    }
-                    onPointerMove={(event) =>
-                      handleElementPointerMove(
+                      onPointerMove={(
                         event,
+                      ) =>
+                        handlePointerMove(
+                          event,
+                          element,
+                        )
+                      }
+                      onPointerUp={
+                        handlePointerUp
+                      }
+                      onClick={(event) =>
+                        event.stopPropagation()
+                      }
+                    >
+                      {renderElementContent(
                         element,
-                      )
-                    }
-                    onPointerUp={stopDragging}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedId(element.id);
-                    }}
-                  >
-                    {element.type === "barcode" ? (
-                      <span className="designer-barcode-preview">
-                        ||| || |||| ||| || ||
-                      </span>
-                    ) : element.type === "qr" ? (
-                      <span className="designer-qr-preview">
-                        QR
-                      </span>
-                    ) : element.type === "image" ||
-                      element.type === "logo" ? (
-                      <span className="designer-image-placeholder">
-                        {element.type === "logo"
-                          ? "LOGO"
-                          : "IMAGE"}
-                      </span>
-                    ) : (
-                      elementPreview(element)
-                    )}
+                      )}
 
-                    {isSelected && (
-                      <ResizeHandle
-                        onPointerDown={(event) =>
-                          startResize(
-                            event,
-                            element,
-                          )
-                        }
-                        onPointerMove={
-                          handleResizeMove
-                        }
-                        onPointerUp={stopResize}
-                      />
-                    )}
-                  </button>
-                );
-              })}
+                      {isSelected &&
+                        !element.locked && (
+                          <div
+                            className="label-resize-handle"
+                            onPointerDown={(
+                              event,
+                            ) =>
+                              handleResizeDown(
+                                event,
+                                element,
+                              )
+                            }
+                            onPointerMove={(
+                              event,
+                            ) =>
+                              handleResizeMove(
+                                event,
+                                element,
+                              )
+                            }
+                            onPointerUp={
+                              handleResizeUp
+                            }
+                          />
+                        )}
+                    </div>
+                  );
+                },
+              )}
             </div>
           </div>
         </section>
 
-        <aside className="designer-panel designer-properties-panel">
+        <section className="designer-panel designer-properties-panel">
           <div className="designer-panel-heading">
             <div>
-              <span className="eyebrow">PROPERTIES</span>
+              <span className="eyebrow">
+                PROPERTIES
+              </span>
 
-              <h3>Element Settings</h3>
+              <h3>
+                Element Settings
+              </h3>
             </div>
           </div>
 
-          {!selectedElement ? (
+          {!selectedElement && (
             <div className="designer-empty-properties">
-              <strong>No element selected</strong>
+              <strong>
+                No element selected
+              </strong>
 
               <span>
-                Add an element and select it on the canvas to
-                edit its properties.
+                Select an element on the
+                canvas to edit its
+                properties.
               </span>
             </div>
-          ) : (
+          )}
+
+          {selectedElement && (
             <div className="designer-properties">
               <div className="property-section">
+                <div className="property-section-title">
+                  Element
+                </div>
+
                 <label>
-                  <span>Element Type</span>
+                  <span>
+                    Type
+                  </span>
 
                   <input
                     type="text"
@@ -820,31 +1172,75 @@ export default function LabelDesignerPage() {
                         selectedElement.type
                       ]
                     }
-                    disabled
+                    readOnly
                   />
                 </label>
 
-                {(selectedElement.type === "text" ||
-                  selectedElement.type === "heading") && (
-                  <label>
-                    <span>Text</span>
+                <label>
+                  <span>
+                    Text / Dynamic Value
+                  </span>
 
-                    <textarea
-                      rows={3}
-                      value={
-                        selectedElement.text ?? ""
-                      }
-                      onChange={(event) =>
-                        updateElement(
-                          selectedElement.id,
-                          {
-                            text: event.target.value,
-                          },
-                        )
-                      }
-                    />
-                  </label>
-                )}
+                  <textarea
+                    value={
+                      selectedElement.text ??
+                      ""
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          text:
+                            event.target
+                              .value,
+                        },
+                      )
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Field
+                  </span>
+
+                  <select
+                    value={
+                      selectedElement.field ??
+                      ""
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          field:
+                            event.target
+                              .value,
+                          text:
+                            event.target
+                              .value,
+                        },
+                      )
+                    }
+                  >
+                    <option value="">
+                      No Dynamic Field
+                    </option>
+
+                    {DYNAMIC_FIELDS.map(
+                      (field) => (
+                        <option
+                          key={field.value}
+                          value={
+                            field.value
+                          }
+                        >
+                          {field.label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
               </div>
 
               <div className="property-section">
@@ -858,13 +1254,18 @@ export default function LabelDesignerPage() {
 
                     <input
                       type="number"
-                      value={selectedElement.x}
-                      onChange={(event) =>
+                      value={
+                        selectedElement.x
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateElement(
                           selectedElement.id,
                           {
                             x: Number(
-                              event.target.value,
+                              event.target
+                                .value,
                             ),
                           },
                         )
@@ -877,13 +1278,18 @@ export default function LabelDesignerPage() {
 
                     <input
                       type="number"
-                      value={selectedElement.y}
-                      onChange={(event) =>
+                      value={
+                        selectedElement.y
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateElement(
                           selectedElement.id,
                           {
                             y: Number(
-                              event.target.value,
+                              event.target
+                                .value,
                             ),
                           },
                         )
@@ -892,65 +1298,115 @@ export default function LabelDesignerPage() {
                   </label>
 
                   <label>
-                    <span>Width</span>
+                    <span>
+                      Width
+                    </span>
 
                     <input
                       type="number"
-                      min="1"
-                      value={selectedElement.width}
-                      onChange={(event) =>
-                        updateElement(
-                          selectedElement.id,
-                          {
-                            width: Number(
-                              event.target.value,
-                            ),
-                          },
-                        )
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    <span>Height</span>
-
-                    <input
-                      type="number"
-                      min="1"
-                      value={selectedElement.height}
-                      onChange={(event) =>
-                        updateElement(
-                          selectedElement.id,
-                          {
-                            height: Number(
-                              event.target.value,
-                            ),
-                          },
-                        )
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    <span>Rotation</span>
-
-                    <input
-                      type="number"
+                      min="5"
                       value={
-                        selectedElement.rotation
+                        selectedElement.width
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateElement(
                           selectedElement.id,
                           {
-                            rotation: Number(
-                              event.target.value,
+                            width: Math.max(
+                              5,
+                              Number(
+                                event.target
+                                  .value,
+                              ),
                             ),
                           },
                         )
                       }
                     />
                   </label>
+
+                  <label>
+                    <span>
+                      Height
+                    </span>
+
+                    <input
+                      type="number"
+                      min="5"
+                      value={
+                        selectedElement.height
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            height:
+                              Math.max(
+                                5,
+                                Number(
+                                  event.target
+                                    .value,
+                                ),
+                              ),
+                          },
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+
+                <div className="designer-position-controls">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      moveElement(
+                        selectedElement.id,
+                        "left",
+                      )
+                    }
+                  >
+                    ←
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      moveElement(
+                        selectedElement.id,
+                        "up",
+                      )
+                    }
+                  >
+                    ↑
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      moveElement(
+                        selectedElement.id,
+                        "down",
+                      )
+                    }
+                  >
+                    ↓
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      moveElement(
+                        selectedElement.id,
+                        "right",
+                      )
+                    }
+                  >
+                    →
+                  </button>
                 </div>
               </div>
 
@@ -961,21 +1417,31 @@ export default function LabelDesignerPage() {
 
                 <div className="property-grid">
                   <label>
-                    <span>Font Size</span>
+                    <span>
+                      Font Size
+                    </span>
 
                     <input
                       type="number"
                       min="6"
                       value={
-                        selectedElement.fontSize ?? 12
+                        selectedElement.fontSize ??
+                        12
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateElement(
                           selectedElement.id,
                           {
-                            fontSize: Number(
-                              event.target.value,
-                            ),
+                            fontSize:
+                              Math.max(
+                                6,
+                                Number(
+                                  event.target
+                                    .value,
+                                ),
+                              ),
                           },
                         )
                       }
@@ -983,7 +1449,9 @@ export default function LabelDesignerPage() {
                   </label>
 
                   <label>
-                    <span>Font Weight</span>
+                    <span>
+                      Weight
+                    </span>
 
                     <select
                       value={
@@ -994,9 +1462,11 @@ export default function LabelDesignerPage() {
                         updateElement(
                           selectedElement.id,
                           {
-                            fontWeight: Number(
-                              event.target.value,
-                            ),
+                            fontWeight:
+                              Number(
+                                event.target
+                                  .value,
+                              ),
                           },
                         )
                       }
@@ -1004,216 +1474,262 @@ export default function LabelDesignerPage() {
                       <option value="400">
                         Regular
                       </option>
-
                       <option value="500">
                         Medium
                       </option>
-
                       <option value="600">
                         Semi Bold
                       </option>
-
                       <option value="700">
                         Bold
                       </option>
-
                       <option value="800">
                         Extra Bold
                       </option>
                     </select>
                   </label>
-
-                  <label>
-                    <span>Alignment</span>
-
-                    <select
-                      value={
-                        selectedElement.textAlign ??
-                        "left"
-                      }
-                      onChange={(event) =>
-                        updateElement(
-                          selectedElement.id,
-                          {
-                            textAlign:
-                              event.target
-                                .value as
-                                | "left"
-                                | "center"
-                                | "right",
-                          },
-                        )
-                      }
-                    >
-                      <option value="left">
-                        Left
-                      </option>
-
-                      <option value="center">
-                        Center
-                      </option>
-
-                      <option value="right">
-                        Right
-                      </option>
-                    </select>
-                  </label>
-
-                  <label>
-                    <span>Color</span>
-
-                    <input
-                      className="designer-property-color"
-                      type="color"
-                      value={
-                        selectedElement.color ??
-                        "#111827"
-                      }
-                      onChange={(event) =>
-                        updateElement(
-                          selectedElement.id,
-                          {
-                            color:
-                              event.target.value,
-                          },
-                        )
-                      }
-                    />
-                  </label>
                 </div>
+
+                <label>
+                  <span>
+                    Text Align
+                  </span>
+
+                  <select
+                    value={
+                      selectedElement.textAlign ??
+                      "left"
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          textAlign:
+                            event.target
+                              .value as
+                              | "left"
+                              | "center"
+                              | "right",
+                        },
+                      )
+                    }
+                  >
+                    <option value="left">
+                      Left
+                    </option>
+                    <option value="center">
+                      Center
+                    </option>
+                    <option value="right">
+                      Right
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Text Color
+                  </span>
+
+                  <input
+                    className="designer-property-color"
+                    type="color"
+                    value={
+                      selectedElement.color ??
+                      "#111827"
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          color:
+                            event.target.value,
+                        },
+                      )
+                    }
+                  />
+                </label>
               </div>
 
               <div className="property-section">
                 <div className="property-section-title">
-                  Element Controls
+                  Appearance
                 </div>
 
-                <div className="designer-position-controls">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moveSelected("up")
-                    }
-                  >
-                    ↑
-                  </button>
+                <label>
+                  <span>
+                    Background
+                  </span>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moveSelected("left")
+                  <input
+                    className="designer-property-color"
+                    type="color"
+                    value={
+                      selectedElement.backgroundColor ===
+                        "transparent"
+                        ? "#ffffff"
+                        : selectedElement.backgroundColor ??
+                          "#ffffff"
                     }
-                  >
-                    ←
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moveSelected("right")
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          backgroundColor:
+                            event.target.value,
+                        },
+                      )
                     }
-                  >
-                    →
-                  </button>
+                  />
+                </label>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moveSelected("down")
+                <label>
+                  <span>
+                    Border Color
+                  </span>
+
+                  <input
+                    className="designer-property-color"
+                    type="color"
+                    value={
+                      selectedElement.borderColor ??
+                      "#111827"
                     }
-                  >
-                    ↓
-                  </button>
-                </div>
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          borderColor:
+                            event.target.value,
+                        },
+                      )
+                    }
+                  />
+                </label>
 
+                <label>
+                  <span>
+                    Border Width
+                  </span>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={
+                      selectedElement.borderWidth ??
+                      1
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          borderWidth:
+                            Math.max(
+                              0,
+                              Number(
+                                event.target
+                                  .value,
+                              ),
+                            ),
+                        },
+                      )
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Rotation
+                  </span>
+
+                  <input
+                    type="number"
+                    value={
+                      selectedElement.rotation
+                    }
+                    onChange={(event) =>
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          rotation:
+                            Number(
+                              event.target
+                                .value,
+                            ),
+                        },
+                      )
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="property-section">
                 <div className="designer-property-actions">
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={duplicateSelected}
+                    onClick={() =>
+                      duplicateElement(
+                        selectedElement.id,
+                      )
+                    }
                   >
                     Duplicate
                   </button>
 
                   <button
-                    className="secondary-button danger-outline"
+                    className="secondary-button"
                     type="button"
-                    onClick={deleteSelected}
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                <label className="designer-toggle">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedElement.locked ?? false
-                    }
-                    onChange={(event) =>
+                    onClick={() =>
                       updateElement(
                         selectedElement.id,
                         {
                           locked:
-                            event.target.checked,
+                            !selectedElement.locked,
                         },
                       )
                     }
-                  />
+                  >
+                    {selectedElement.locked
+                      ? "Unlock"
+                      : "Lock"}
+                  </button>
 
-                  <span>Lock element</span>
-                </label>
-
-                <label className="designer-toggle">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedElement.hidden ?? false
-                    }
-                    onChange={(event) =>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() =>
                       updateElement(
                         selectedElement.id,
                         {
                           hidden:
-                            event.target.checked,
+                            !selectedElement.hidden,
                         },
                       )
                     }
-                  />
+                  >
+                    {selectedElement.hidden
+                      ? "Show"
+                      : "Hide"}
+                  </button>
 
-                  <span>Hide element</span>
-                </label>
+                  <button
+                    className="secondary-button danger-outline"
+                    type="button"
+                    onClick={() =>
+                      deleteElement(
+                        selectedElement.id,
+                      )
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           )}
-        </aside>
-      </section>
+        </section>
+      </div>
     </main>
-  );
-}
-
-function ResizeHandle({
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-}: {
-  onPointerDown: (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => void;
-  onPointerMove: (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => void;
-  onPointerUp: (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => void;
-}) {
-  return (
-    <div
-      className="label-resize-handle"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onClick={(event) => event.stopPropagation()}
-    />
   );
 }
