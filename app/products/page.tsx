@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   addProduct,
   deleteProduct,
@@ -9,10 +9,13 @@ import {
 } from "../lib/storage";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<StoredProduct[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [products, setProducts] = useState<StoredProduct[]>(() =>
+  getProducts()
+);
 
-  const [form, setForm] = useState({
+const [showForm, setShowForm] = useState(false);
+
+const [form, setForm] = useState({
     name: "",
     sku: "",
     barcode: "",
@@ -21,9 +24,7 @@ export default function ProductsPage() {
     stock: "",
   });
 
-  useEffect(() => {
-    setProducts(getProducts());
-  }, []);
+  
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement>
