@@ -5,17 +5,21 @@ import {
   addProduct,
   deleteProduct,
   getProducts,
+  updateProduct,
   type StoredProduct,
 } from "../lib/storage";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<StoredProduct[]>(() =>
-  getProducts()
-);
+    getProducts()
+  );
 
-const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
 
-const [form, setForm] = useState({
+  const [form, setForm] = useState({
     name: "",
     sku: "",
     barcode: "",
@@ -24,7 +28,30 @@ const [form, setForm] = useState({
     stock: "",
   });
 
-  
+  const categories = Array.from(
+    new Set(
+      products
+        .map((product) => product.category.trim())
+        .filter(Boolean)
+    )
+  ).sort();
+
+  const filteredProducts = products.filter((product) => {
+    const searchText = search.trim().toLowerCase();
+
+    const matchesSearch =
+      !searchText ||
+      product.name.toLowerCase().includes(searchText) ||
+      product.sku.toLowerCase().includes(searchText) ||
+      product.barcode.toLowerCase().includes(searchText) ||
+      product.category.toLowerCase().includes(searchText);
+
+    const matchesCategory =
+      categoryFilter === "All" ||
+      product.category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement>
@@ -37,12 +64,41 @@ const [form, setForm] = useState({
     }));
   }
 
-  function handleAddProduct(
+  function resetForm() {
+    setForm({
+      name: "",
+      sku: "",
+      barcode: "",
+      category: "",
+      price: "",
+      stock: "",
+    });
+
+    setEditingId(null);
+    setShowForm(false);
+  }
+
+  function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
     if (!form.name.trim() || !form.sku.trim()) {
+      return;
+    }
+
+    if (editingId) {
+      const updatedProducts = updateProduct(editingId, {
+        name: form.name.trim(),
+        sku: form.sku.trim(),
+        barcode: form.barcode.trim(),
+        category: form.category.trim(),
+        price: form.price.trim(),
+        stock: form.stock.trim(),
+      });
+
+      setProducts(updatedProducts);
+      resetForm();
       return;
     }
 
@@ -56,17 +112,35 @@ const [form, setForm] = useState({
     });
 
     setProducts((current) => [...current, product]);
+    resetForm();
+  }
+
+  function handleEdit(product: StoredProduct) {
+    setEditingId(product.id);
 
     setForm({
-      name: "",
-      sku: "",
-      barcode: "",
-      category: "",
-      price: "",
-      stock: "",
+      name: product.name,
+      sku: product.sku,
+      barcode: product.barcode,
+      category: product.category,
+      price: product.price,
+      stock: product.stock,
     });
 
-    setShowForm(false);
+    setShowForm(true);
+  }
+
+  function handleDuplicate(product: StoredProduct) {
+    const duplicate = addProduct({
+      name: `${product.name} Copy`,
+      sku: `${product.sku}-COPY`,
+      barcode: product.barcode,
+      category: product.category,
+      price: product.price,
+      stock: product.stock,
+    });
+
+    setProducts((current) => [...current, duplicate]);
   }
 
   function handleDeleteProduct(id: string) {
@@ -99,7 +173,14 @@ const [form, setForm] = useState({
 
         <button
           className="primary-button"
-          onClick={() => setShowForm((current) => !current)}
+          onClick={() => {
+            if (showForm) {
+              resetForm();
+            } else {
+              setEditingId(null);
+              setShowForm(true);
+            }
+          }}
         >
           {showForm ? "Close Form" : "+ Add Product"}
         </button>
@@ -109,14 +190,19 @@ const [form, setForm] = useState({
         <section className="product-form-panel">
           <div className="panel-heading">
             <div>
-              <span className="section-label">NEW PRODUCT</span>
-              <h3>Add product</h3>
+              <span className="section-label">
+                {editingId ? "EDIT PRODUCT" : "NEW PRODUCT"}
+              </span>
+
+              <h3>
+                {editingId ? "Edit product" : "Add product"}
+              </h3>
             </div>
           </div>
 
           <form
             className="product-form"
-            onSubmit={handleAddProduct}
+            onSubmit={handleSubmit}
           >
             <div className="form-field">
               <label htmlFor="name">Product Name *</label>
@@ -198,7 +284,7 @@ const [form, setForm] = useState({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => setShowForm(false)}
+                onClick={resetForm}
               >
                 Cancel
               </button>
@@ -207,7 +293,7 @@ const [form, setForm] = useState({
                 type="submit"
                 className="primary-button"
               >
-                Save Product
+                {editingId ? "Update Product" : "Save Product"}
               </button>
             </div>
           </form>
@@ -225,9 +311,34 @@ const [form, setForm] = useState({
           </div>
 
           <span className="section-note">
-            {products.length} product
-            {products.length === 1 ? "" : "s"}
+            {filteredProducts.length} of {products.length}
           </span>
+        </div>
+
+        <div className="product-toolbar">
+          <input
+            className="product-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search product, SKU, barcode or category..."
+          />
+
+          <select
+            className="category-filter"
+            value={categoryFilter}
+            onChange={(event) =>
+              setCategoryFilter(event.target.value)
+            }
+          >
+            <option value="All">All Categories</option>
+
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
         </div>
 
         {products.length === 0 ? (
@@ -248,6 +359,17 @@ const [form, setForm] = useState({
               + Add First Product
             </button>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">⌕</div>
+
+            <strong>No matching products</strong>
+
+            <p>
+              Try another search term or select a different
+              category.
+            </p>
+          </div>
         ) : (
           <div className="product-table-wrapper">
             <table className="product-table">
@@ -259,12 +381,12 @@ const [form, setForm] = useState({
                   <th>Category</th>
                   <th>Price</th>
                   <th>Stock</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <tr key={product.id}>
                     <td>
                       <strong>{product.name}</strong>
@@ -285,14 +407,32 @@ const [form, setForm] = useState({
                     <td>{product.stock || "—"}</td>
 
                     <td>
-                      <button
-                        className="delete-button"
-                        onClick={() =>
-                          handleDeleteProduct(product.id)
-                        }
-                      >
-                        Delete
-                      </button>
+                      <div className="product-actions">
+                        <button
+                          className="table-action"
+                          onClick={() => handleEdit(product)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="table-action"
+                          onClick={() =>
+                            handleDuplicate(product)
+                          }
+                        >
+                          Duplicate
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() =>
+                            handleDeleteProduct(product.id)
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
