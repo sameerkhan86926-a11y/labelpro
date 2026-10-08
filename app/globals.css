@@ -1084,4 +1084,242 @@ a {
     grid-column: auto;
   }
 }
+.barcode-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.barcode-controls-panel,
+.barcode-preview-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  padding: 22px;
+}
+
+.barcode-section-heading,
+.barcode-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.barcode-section-heading h3,
+.barcode-preview-header h3 {
+  margin: 7px 0 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.barcode-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.barcode-form select,
+.barcode-form input[type="text"],
+.barcode-form input[type="number"] {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: white;
+  color: #111827;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.barcode-form select:focus,
+.barcode-form input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px #eff6ff;
+}
+
+.barcode-wide {
+  grid-column: 1 / -1;
+}
+
+.barcode-checkbox {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.barcode-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.barcode-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding-top: 4px;
+}
+
+.barcode-message {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.barcode-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b42318;
+}
+
+.barcode-success {
+  border: 1px solid #abefc6;
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.barcode-format-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.barcode-preview-stage {
+  min-height: 300px;
+  margin-top: 20px;
+  padding: 30px;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  background: #fafbfc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.barcode-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.barcode-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.barcode-empty strong {
+  color: #344054;
+  font-size: 13px;
+}
+
+.barcode-empty span {
+  color: #98a2b3;
+  font-size: 11px;
+}
+
+.barcode-preview-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  background: #eef1f5;
+}
+
+.barcode-preview-info div {
+  min-height: 72px;
+  padding: 13px;
+  background: white;
+}
+
+.barcode-preview-info span {
+  display: block;
+  margin-bottom: 7px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.barcode-preview-info strong {
+  display: block;
+  color: #111827;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+@media (max-width: 1000px) {
+  .barcode-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .barcode-controls-panel,
+  .barcode-preview-panel {
+    padding: 16px;
+  }
+
+  .barcode-form {
+    grid-template-columns: 1fr;
+  }
+
+  .barcode-wide {
+    grid-column: auto;
+  }
+
+  .barcode-checkbox {
+    grid-column: auto;
+  }
+
+  .barcode-message {
+    grid-column: auto;
+  }
+
+  .barcode-form-actions {
+    grid-column: auto;
+    flex-direction: column;
+  }
+
+  .barcode-form-actions button {
+    width: 100%;
+  }
+
+  .barcode-preview-stage {
+    min-height: 230px;
+    padding: 20px;
+  }
+
+  .barcode-preview-info {
+    grid-template-columns: 1fr;
+  }
+}
 
