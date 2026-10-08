@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useState } from "react";
 
 import {
   deleteTemplate,
@@ -15,19 +11,13 @@ import {
 
 export default function TemplatesPage() {
   const [templates, setTemplates] =
-    useState<LabelTemplate[]>([]);
+    useState<LabelTemplate[]>(() =>
+      getTemplates(),
+    );
 
-  const [loaded, setLoaded] =
-    useState(false);
-
-  const loadTemplates = useCallback(() => {
+  function refreshTemplates() {
     setTemplates(getTemplates());
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+  }
 
   function handleDelete(id: string) {
     const confirmed =
@@ -38,12 +28,12 @@ export default function TemplatesPage() {
     if (!confirmed) return;
 
     deleteTemplate(id);
-    loadTemplates();
+    refreshTemplates();
   }
 
   function handleDuplicate(id: string) {
     duplicateTemplate(id);
-    loadTemplates();
+    refreshTemplates();
   }
 
   function openTemplate(
@@ -55,8 +45,9 @@ export default function TemplatesPage() {
         JSON.stringify(template),
       );
 
-      window.location.href =
-        "/labelpro/labels/designer/";
+      window.location.assign(
+        "/labelpro/labels/designer/",
+      );
     } catch {
       window.alert(
         "Unable to open template.",
@@ -90,186 +81,177 @@ export default function TemplatesPage() {
         </a>
       </div>
 
-      {!loaded && (
-        <div className="templates-loading">
-          Loading templates...
+      {templates.length === 0 && (
+        <div className="templates-empty">
+          <div className="templates-empty-icon">
+            +
+          </div>
+
+          <h2>
+            No templates yet
+          </h2>
+
+          <p>
+            Create your first label
+            template from the Label
+            Designer.
+          </p>
+
+          <a
+            href="/labelpro/labels/designer/"
+            className="templates-primary-button"
+          >
+            Create First Template
+          </a>
         </div>
       )}
 
-      {loaded &&
-        templates.length === 0 && (
-          <div className="templates-empty">
-            <div className="templates-empty-icon">
-              +
-            </div>
+      {templates.length > 0 && (
+        <div className="templates-grid">
+          {templates.map(
+            (template) => (
+              <article
+                key={template.id}
+                className="template-card"
+              >
+                <div className="template-preview-area">
+                  <div
+                    className="template-preview"
+                    style={{
+                      width: `${Math.min(
+                        template.size.width * 2,
+                        260,
+                      )}px`,
+                      height: `${Math.min(
+                        template.size.height * 2,
+                        180,
+                      )}px`,
+                      backgroundColor:
+                        template.backgroundColor,
+                    }}
+                  >
+                    {template.elements
+                      .slice(0, 8)
+                      .map(
+                        (element) => (
+                          <div
+                            key={
+                              element.id
+                            }
+                            className="template-preview-element"
+                            style={{
+                              left: `${element.x * 2}px`,
+                              top: `${element.y * 2}px`,
+                              width: `${Math.min(
+                                element.width *
+                                  2,
+                                200,
+                              )}px`,
+                              height: `${Math.min(
+                                element.height *
+                                  2,
+                                80,
+                              )}px`,
+                              fontSize: `${Math.max(
+                                6,
+                                (element.fontSize ??
+                                  10) *
+                                  0.7,
+                              )}px`,
+                              fontWeight:
+                                element.fontWeight ??
+                                500,
+                              color:
+                                element.color ??
+                                "#111827",
+                              opacity:
+                                element.opacity ??
+                                1,
+                            }}
+                          >
+                            {element.text ||
+                              element.type.replace(
+                                /_/g,
+                                " ",
+                              )}
+                          </div>
+                        ),
+                      )}
+                  </div>
+                </div>
 
-            <h2>
-              No templates yet
-            </h2>
+                <div className="template-card-content">
+                  <div className="template-card-top">
+                    <div>
+                      <h2>
+                        {template.name}
+                      </h2>
 
-            <p>
-              Create your first label
-              template from the Label
-              Designer.
-            </p>
+                      <p>
+                        {template.description ||
+                          "Custom LabelPro template"}
+                      </p>
+                    </div>
+                  </div>
 
-            <a
-              href="/labelpro/labels/designer/"
-              className="templates-primary-button"
-            >
-              Create First Template
-            </a>
-          </div>
-        )}
+                  <div className="template-meta">
+                    <span>
+                      {template.size.width} ×{" "}
+                      {template.size.height} mm
+                    </span>
 
-      {loaded &&
-        templates.length > 0 && (
-          <div className="templates-grid">
-            {templates.map(
-              (template) => (
-                <article
-                  key={template.id}
-                  className="template-card"
-                >
-                  <div className="template-preview-area">
-                    <div
-                      className="template-preview"
-                      style={{
-                        width: `${Math.min(
-                          template.size.width * 2,
-                          260,
-                        )}px`,
-                        height: `${Math.min(
-                          template.size.height * 2,
-                          180,
-                        )}px`,
-                        backgroundColor:
-                          template.backgroundColor,
-                      }}
+                    <span>
+                      {
+                        template.elements
+                          .length
+                      }{" "}
+                      elements
+                    </span>
+                  </div>
+
+                  <div className="template-actions">
+                    <button
+                      type="button"
+                      className="template-edit-button"
+                      onClick={() =>
+                        openTemplate(
+                          template,
+                        )
+                      }
                     >
-                      {template.elements
-                        .slice(0, 8)
-                        .map(
-                          (element) => (
-                            <div
-                              key={
-                                element.id
-                              }
-                              className="template-preview-element"
-                              style={{
-                                left: `${element.x * 2}px`,
-                                top: `${element.y * 2}px`,
-                                width: `${Math.min(
-                                  element.width *
-                                    2,
-                                  200,
-                                )}px`,
-                                height: `${Math.min(
-                                  element.height *
-                                    2,
-                                  80,
-                                )}px`,
-                                fontSize: `${Math.max(
-                                  6,
-                                  (element.fontSize ??
-                                    10) *
-                                    0.7,
-                                )}px`,
-                                fontWeight:
-                                  element.fontWeight ??
-                                  500,
-                                color:
-                                  element.color ??
-                                  "#111827",
-                                opacity:
-                                  element.opacity ??
-                                  1,
-                              }}
-                            >
-                              {element.text ||
-                                element.type
-                                  .replace(
-                                    /_/g,
-                                    " ",
-                                  )}
-                            </div>
-                          ),
-                        )}
-                    </div>
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      className="template-secondary-button"
+                      onClick={() =>
+                        handleDuplicate(
+                          template.id,
+                        )
+                      }
+                    >
+                      Duplicate
+                    </button>
+
+                    <button
+                      type="button"
+                      className="template-danger-button"
+                      onClick={() =>
+                        handleDelete(
+                          template.id,
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
                   </div>
-
-                  <div className="template-card-content">
-                    <div className="template-card-top">
-                      <div>
-                        <h2>
-                          {template.name}
-                        </h2>
-
-                        <p>
-                          {template.description ||
-                            "Custom LabelPro template"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="template-meta">
-                      <span>
-                        {template.size.width} ×{" "}
-                        {template.size.height} mm
-                      </span>
-
-                      <span>
-                        {
-                          template.elements
-                            .length
-                        }{" "}
-                        elements
-                      </span>
-                    </div>
-
-                    <div className="template-actions">
-                      <button
-                        type="button"
-                        className="template-edit-button"
-                        onClick={() =>
-                          openTemplate(
-                            template,
-                          )
-                        }
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        className="template-secondary-button"
-                        onClick={() =>
-                          handleDuplicate(
-                            template.id,
-                          )
-                        }
-                      >
-                        Duplicate
-                      </button>
-
-                      <button
-                        type="button"
-                        className="template-danger-button"
-                        onClick={() =>
-                          handleDelete(
-                            template.id,
-                          )
-                        }
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ),
-            )}
-          </div>
-        )}
+                </div>
+              </article>
+            ),
+          )}
+        </div>
+      )}
     </main>
   );
 }
