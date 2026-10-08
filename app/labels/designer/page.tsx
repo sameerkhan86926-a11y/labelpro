@@ -268,13 +268,48 @@ function QRElement({
 
 export default function LabelDesignerPage() {
   const [template, setTemplate] =
-    useState<LabelTemplate>(() =>
-      createLabelTemplate(
-        "New Product Label",
-        50,
-        25,
-      ),
+  useState<LabelTemplate>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored =
+          window.localStorage.getItem(
+            "labelpro_editor_template",
+          );
+
+        if (stored) {
+          const parsed =
+            JSON.parse(stored);
+
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            Array.isArray(parsed.elements) &&
+            parsed.size &&
+            typeof parsed.size.width ===
+              "number" &&
+            typeof parsed.size.height ===
+              "number"
+          ) {
+            window.localStorage.removeItem(
+              "labelpro_editor_template",
+            );
+
+            return parsed as LabelTemplate;
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(
+          "labelpro_editor_template",
+        );
+      }
+    }
+
+    return createLabelTemplate(
+      "New Product Label",
+      50,
+      25,
     );
+  });
 
   const [selectedElementId, setSelectedElementId] =
     useState<string | null>(null);
