@@ -6,8 +6,9 @@ import {
   deleteTemplate,
   duplicateTemplate,
   getTemplates,
-  type LabelTemplate,
 } from "../lib/template-storage";
+
+import type { LabelTemplate } from "../lib/label-types";
 
 export default function TemplatesPage() {
   const [templates, setTemplates] =
