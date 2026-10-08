@@ -1,6 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  PointerEvent as ReactPointerEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  calculateDragPosition,
+  calculateResize,
+  type DragStart,
+  type ResizeStart,
+} from "../../lib/label-editor";
 import {
   createLabelElement,
   createLabelTemplate,
@@ -43,6 +54,8 @@ const FIELD_PREVIEWS: Record<string, string> = {
   manufacturing_date: "01/01/2026",
 };
 
+const CANVAS_SCALE = 3;
+
 function elementPreview(element: LabelElement) {
   if (element.type === "text") {
     return element.text || "Sample Text";
@@ -62,9 +75,21 @@ export default function LabelDesignerPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const [resizingId, setResizingId] = useState<string | null>(null);
+
+  const dragRef = useRef<DragStart | null>(null);
+
+  const resizeRef = useRef<ResizeStart | null>(null);
+
+  const resizeElementRef = useRef<LabelElement | null>(null);
+
   const selectedElement = useMemo(
     () =>
-      template.elements.find((element) => element.id === selectedId) ?? null,
+      template.elements.find(
+        (element) => element.id === selectedId,
+      ) ?? null,
     [template.elements, selectedId],
   );
 
@@ -76,8 +101,38 @@ export default function LabelDesignerPage() {
     }));
   };
 
+  const updateElement = (
+    id: string,
+    updates: Partial<LabelElement>,
+  ) => {
+    setTemplate((current) => ({
+      ...current,
+      elements: current.elements.map((element) =>
+        element.id === id
+          ? {
+              ...element,
+              ...updates,
+            }
+          : element,
+      ),
+      updatedAt: new Date().toISOString(),
+    }));
+  };
+
   const addElement = (type: LabelElementType) => {
     const element = createLabelElement(type);
+
+    const offset = template.elements.length * 2;
+
+    element.x = Math.min(
+      10 + offset,
+      Math.max(0, template.size.width - element.width),
+    );
+
+    element.y = Math.min(
+      10 + offset,
+      Math.max(0, template.size.height - element.height),
+    );
 
     if (type === "heading") {
       element.width = 80;
@@ -134,6 +189,16 @@ export default function LabelDesignerPage() {
       element.borderWidth = 1;
     }
 
+    element.x = Math.min(
+      element.x,
+      Math.max(0, template.size.width - element.width),
+    );
+
+    element.y = Math.min(
+      element.y,
+      Math.max(0, template.size.height - element.height),
+    );
+
     setTemplate((current) => ({
       ...current,
       elements: [...current.elements, element],
@@ -143,22 +208,137 @@ export default function LabelDesignerPage() {
     setSelectedId(element.id);
   };
 
-  const updateElement = (
-    id: string,
-    updates: Partial<LabelElement>,
+  const startDragging = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    element: LabelElement,
   ) => {
-    setTemplate((current) => ({
-      ...current,
-      elements: current.elements.map((element) =>
-        element.id === id
-          ? {
-              ...element,
-              ...updates,
-            }
-          : element,
-      ),
-      updatedAt: new Date().toISOString(),
-    }));
+    if (element.locked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    setSelectedId(element.id);
+    setDraggingId(element.id);
+
+    dragRef.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      elementX: element.x,
+      elementY: element.y,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleElementPointerMove = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    element: LabelElement,
+  ) => {
+    if (
+      !draggingId ||
+      draggingId !== element.id ||
+      !dragRef.current ||
+      element.locked
+    ) {
+      return;
+    }
+
+    const position = calculateDragPosition(
+      dragRef.current,
+      event.clientX,
+      event.clientY,
+      CANVAS_SCALE,
+      element,
+      template.size.width,
+      template.size.height,
+    );
+
+    updateElement(element.id, position);
+  };
+
+  const stopDragging = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (draggingId) {
+      try {
+        event.currentTarget.releasePointerCapture(
+          event.pointerId,
+        );
+      } catch {
+        // Pointer capture may already be released.
+      }
+    }
+
+    setDraggingId(null);
+    dragRef.current = null;
+  };
+
+  const startResize = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    element: LabelElement,
+  ) => {
+    if (element.locked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    setSelectedId(element.id);
+    setResizingId(element.id);
+
+    resizeElementRef.current = element;
+
+    resizeRef.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      elementWidth: element.width,
+      elementHeight: element.height,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleResizeMove = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (
+      !resizingId ||
+      !resizeRef.current ||
+      !resizeElementRef.current
+    ) {
+      return;
+    }
+
+    const element = resizeElementRef.current;
+
+    const size = calculateResize(
+      resizeRef.current,
+      event.clientX,
+      event.clientY,
+      CANVAS_SCALE,
+      element,
+      template.size.width,
+      template.size.height,
+    );
+
+    updateElement(element.id, size);
+  };
+
+  const stopResize = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (resizingId) {
+      try {
+        event.currentTarget.releasePointerCapture(
+          event.pointerId,
+        );
+      } catch {
+        // Pointer capture may already be released.
+      }
+    }
+
+    setResizingId(null);
+    resizeRef.current = null;
+    resizeElementRef.current = null;
   };
 
   const deleteSelected = () => {
@@ -181,8 +361,20 @@ export default function LabelDesignerPage() {
     const duplicate: LabelElement = {
       ...selectedElement,
       id: crypto.randomUUID(),
-      x: selectedElement.x + 5,
-      y: selectedElement.y + 5,
+      x: Math.min(
+        selectedElement.x + 5,
+        Math.max(
+          0,
+          template.size.width - selectedElement.width,
+        ),
+      ),
+      y: Math.min(
+        selectedElement.y + 5,
+        Math.max(
+          0,
+          template.size.height - selectedElement.height,
+        ),
+      ),
     };
 
     setTemplate((current) => ({
@@ -201,26 +393,35 @@ export default function LabelDesignerPage() {
 
     const amount = 1;
 
-    updateElement(selectedElement.id, {
-      x:
-        direction === "left"
-          ? Math.max(0, selectedElement.x - amount)
-          : direction === "right"
-            ? Math.min(
-                template.size.width - selectedElement.width,
-                selectedElement.x + amount,
-              )
-            : selectedElement.x,
+    const nextX =
+      direction === "left"
+        ? selectedElement.x - amount
+        : direction === "right"
+          ? selectedElement.x + amount
+          : selectedElement.x;
 
-      y:
-        direction === "up"
-          ? Math.max(0, selectedElement.y - amount)
-          : direction === "down"
-            ? Math.min(
-                template.size.height - selectedElement.height,
-                selectedElement.y + amount,
-              )
-            : selectedElement.y,
+    const nextY =
+      direction === "up"
+        ? selectedElement.y - amount
+        : direction === "down"
+          ? selectedElement.y + amount
+          : selectedElement.y;
+
+    updateElement(selectedElement.id, {
+      x: Math.max(
+        0,
+        Math.min(
+          nextX,
+          template.size.width - selectedElement.width,
+        ),
+      ),
+      y: Math.max(
+        0,
+        Math.min(
+          nextY,
+          template.size.height - selectedElement.height,
+        ),
+      ),
     });
   };
 
@@ -264,7 +465,9 @@ export default function LabelDesignerPage() {
       <div className="module-header">
         <div>
           <span className="eyebrow">LABEL DESIGNER</span>
+
           <h2>Professional Label Designer</h2>
+
           <p>
             Create reusable product labels with dynamic fields,
             barcodes, QR codes and custom elements.
@@ -294,6 +497,7 @@ export default function LabelDesignerPage() {
         <div className="designer-toolbar-group">
           <label>
             <span>Template Name</span>
+
             <input
               type="text"
               value={template.name}
@@ -307,6 +511,7 @@ export default function LabelDesignerPage() {
 
           <label>
             <span>Label Size</span>
+
             <select
               value={`${template.size.width}x${template.size.height}`}
               onChange={(event) => {
@@ -336,6 +541,7 @@ export default function LabelDesignerPage() {
 
           <label>
             <span>Background</span>
+
             <input
               className="designer-color-input"
               type="color"
@@ -350,7 +556,10 @@ export default function LabelDesignerPage() {
         </div>
 
         <div className="designer-toolbar-status">
-          <span>{template.elements.length} elements</span>
+          <span>
+            {template.elements.length} elements
+          </span>
+
           <span>
             {template.size.width} × {template.size.height} mm
           </span>
@@ -362,6 +571,7 @@ export default function LabelDesignerPage() {
           <div className="designer-panel-heading">
             <div>
               <span className="eyebrow">ELEMENTS</span>
+
               <h3>Add Elements</h3>
             </div>
           </div>
@@ -377,6 +587,7 @@ export default function LabelDesignerPage() {
                 <strong>
                   {LABEL_ELEMENT_LABELS[type]}
                 </strong>
+
                 <span>+ Add</span>
               </button>
             ))}
@@ -387,6 +598,7 @@ export default function LabelDesignerPage() {
           <div className="designer-canvas-header">
             <div>
               <span className="eyebrow">CANVAS</span>
+
               <h3>Label Preview</h3>
             </div>
 
@@ -402,8 +614,8 @@ export default function LabelDesignerPage() {
             <div
               className="label-canvas"
               style={{
-                width: `${template.size.width * 3}px`,
-                height: `${template.size.height * 3}px`,
+                width: `${template.size.width * CANVAS_SCALE}px`,
+                height: `${template.size.height * CANVAS_SCALE}px`,
                 backgroundColor: template.backgroundColor,
               }}
               onClick={() => setSelectedId(null)}
@@ -411,28 +623,34 @@ export default function LabelDesignerPage() {
               {template.elements.map((element) => {
                 if (element.hidden) return null;
 
-                const isSelected = element.id === selectedId;
+                const isSelected =
+                  element.id === selectedId;
 
                 const commonStyle = {
-                  left: `${element.x * 3}px`,
-                  top: `${element.y * 3}px`,
-                  width: `${element.width * 3}px`,
-                  height: `${element.height * 3}px`,
+                  left: `${element.x * CANVAS_SCALE}px`,
+                  top: `${element.y * CANVAS_SCALE}px`,
+                  width: `${element.width * CANVAS_SCALE}px`,
+                  height: `${element.height * CANVAS_SCALE}px`,
                   transform: `rotate(${element.rotation}deg)`,
                   opacity: element.opacity ?? 1,
                   color: element.color ?? "#111827",
                   backgroundColor:
-                    element.backgroundColor ?? "transparent",
+                    element.backgroundColor ??
+                    "transparent",
                   borderColor:
-                    element.borderColor ?? "#111827",
+                    element.borderColor ??
+                    "#111827",
                   borderWidth: `${element.borderWidth ?? 0}px`,
                   fontSize: `${Math.max(
                     7,
                     (element.fontSize ?? 12) * 0.75,
                   )}px`,
-                  fontWeight: element.fontWeight ?? 500,
-                  fontFamily: element.fontFamily ?? "Arial",
-                  textAlign: element.textAlign ?? "left",
+                  fontWeight:
+                    element.fontWeight ?? 500,
+                  fontFamily:
+                    element.fontFamily ?? "Arial",
+                  textAlign:
+                    element.textAlign ?? "left",
                 };
 
                 if (element.type === "line") {
@@ -444,6 +662,16 @@ export default function LabelDesignerPage() {
                         isSelected ? "selected" : ""
                       }`}
                       style={commonStyle}
+                      onPointerDown={(event) =>
+                        startDragging(event, element)
+                      }
+                      onPointerMove={(event) =>
+                        handleElementPointerMove(
+                          event,
+                          element,
+                        )
+                      }
+                      onPointerUp={stopDragging}
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedId(element.id);
@@ -452,37 +680,49 @@ export default function LabelDesignerPage() {
                   );
                 }
 
-                if (element.type === "rectangle") {
+                if (
+                  element.type === "rectangle" ||
+                  element.type === "circle"
+                ) {
                   return (
                     <button
                       key={element.id}
                       type="button"
                       className={`label-element label-shape ${
+                        element.type === "circle"
+                          ? "label-circle"
+                          : ""
+                      } ${
                         isSelected ? "selected" : ""
                       }`}
                       style={commonStyle}
+                      onPointerDown={(event) =>
+                        startDragging(event, element)
+                      }
+                      onPointerMove={(event) =>
+                        handleElementPointerMove(
+                          event,
+                          element,
+                        )
+                      }
+                      onPointerUp={stopDragging}
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedId(element.id);
                       }}
-                    />
-                  );
-                }
-
-                if (element.type === "circle") {
-                  return (
-                    <button
-                      key={element.id}
-                      type="button"
-                      className={`label-element label-shape label-circle ${
-                        isSelected ? "selected" : ""
-                      }`}
-                      style={commonStyle}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedId(element.id);
-                      }}
-                    />
+                    >
+                      {isSelected && (
+                        <ResizeHandle
+                          onPointerDown={(event) =>
+                            startResize(event, element)
+                          }
+                          onPointerMove={
+                            handleResizeMove
+                          }
+                          onPointerUp={stopResize}
+                        />
+                      )}
+                    </button>
                   );
                 }
 
@@ -494,6 +734,16 @@ export default function LabelDesignerPage() {
                       isSelected ? "selected" : ""
                     }`}
                     style={commonStyle}
+                    onPointerDown={(event) =>
+                      startDragging(event, element)
+                    }
+                    onPointerMove={(event) =>
+                      handleElementPointerMove(
+                        event,
+                        element,
+                      )
+                    }
+                    onPointerUp={stopDragging}
                     onClick={(event) => {
                       event.stopPropagation();
                       setSelectedId(element.id);
@@ -517,6 +767,21 @@ export default function LabelDesignerPage() {
                     ) : (
                       elementPreview(element)
                     )}
+
+                    {isSelected && (
+                      <ResizeHandle
+                        onPointerDown={(event) =>
+                          startResize(
+                            event,
+                            element,
+                          )
+                        }
+                        onPointerMove={
+                          handleResizeMove
+                        }
+                        onPointerUp={stopResize}
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -528,6 +793,7 @@ export default function LabelDesignerPage() {
           <div className="designer-panel-heading">
             <div>
               <span className="eyebrow">PROPERTIES</span>
+
               <h3>Element Settings</h3>
             </div>
           </div>
@@ -535,9 +801,10 @@ export default function LabelDesignerPage() {
           {!selectedElement ? (
             <div className="designer-empty-properties">
               <strong>No element selected</strong>
+
               <span>
-                Add an element and select it on the canvas to edit
-                its properties.
+                Add an element and select it on the canvas to
+                edit its properties.
               </span>
             </div>
           ) : (
@@ -545,9 +812,14 @@ export default function LabelDesignerPage() {
               <div className="property-section">
                 <label>
                   <span>Element Type</span>
+
                   <input
                     type="text"
-                    value={LABEL_ELEMENT_LABELS[selectedElement.type]}
+                    value={
+                      LABEL_ELEMENT_LABELS[
+                        selectedElement.type
+                      ]
+                    }
                     disabled
                   />
                 </label>
@@ -556,13 +828,19 @@ export default function LabelDesignerPage() {
                   selectedElement.type === "heading") && (
                   <label>
                     <span>Text</span>
+
                     <textarea
                       rows={3}
-                      value={selectedElement.text ?? ""}
+                      value={
+                        selectedElement.text ?? ""
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          text: event.target.value,
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            text: event.target.value,
+                          },
+                        )
                       }
                     />
                   </label>
@@ -577,67 +855,99 @@ export default function LabelDesignerPage() {
                 <div className="property-grid">
                   <label>
                     <span>X</span>
+
                     <input
                       type="number"
                       value={selectedElement.x}
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          x: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            x: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
 
                   <label>
                     <span>Y</span>
+
                     <input
                       type="number"
                       value={selectedElement.y}
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          y: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            y: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
 
                   <label>
                     <span>Width</span>
+
                     <input
                       type="number"
                       min="1"
                       value={selectedElement.width}
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          width: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            width: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
 
                   <label>
                     <span>Height</span>
+
                     <input
                       type="number"
                       min="1"
                       value={selectedElement.height}
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          height: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            height: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
 
                   <label>
                     <span>Rotation</span>
+
                     <input
                       type="number"
-                      value={selectedElement.rotation}
+                      value={
+                        selectedElement.rotation
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          rotation: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            rotation: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
@@ -652,65 +962,121 @@ export default function LabelDesignerPage() {
                 <div className="property-grid">
                   <label>
                     <span>Font Size</span>
+
                     <input
                       type="number"
                       min="6"
-                      value={selectedElement.fontSize ?? 12}
+                      value={
+                        selectedElement.fontSize ?? 12
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          fontSize: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            fontSize: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     />
                   </label>
 
                   <label>
                     <span>Font Weight</span>
+
                     <select
-                      value={selectedElement.fontWeight ?? 500}
+                      value={
+                        selectedElement.fontWeight ??
+                        500
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          fontWeight: Number(event.target.value),
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            fontWeight: Number(
+                              event.target.value,
+                            ),
+                          },
+                        )
                       }
                     >
-                      <option value="400">Regular</option>
-                      <option value="500">Medium</option>
-                      <option value="600">Semi Bold</option>
-                      <option value="700">Bold</option>
-                      <option value="800">Extra Bold</option>
+                      <option value="400">
+                        Regular
+                      </option>
+
+                      <option value="500">
+                        Medium
+                      </option>
+
+                      <option value="600">
+                        Semi Bold
+                      </option>
+
+                      <option value="700">
+                        Bold
+                      </option>
+
+                      <option value="800">
+                        Extra Bold
+                      </option>
                     </select>
                   </label>
 
                   <label>
                     <span>Alignment</span>
+
                     <select
-                      value={selectedElement.textAlign ?? "left"}
+                      value={
+                        selectedElement.textAlign ??
+                        "left"
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          textAlign: event.target.value as
-                            | "left"
-                            | "center"
-                            | "right",
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            textAlign:
+                              event.target
+                                .value as
+                                | "left"
+                                | "center"
+                                | "right",
+                          },
+                        )
                       }
                     >
-                      <option value="left">Left</option>
-                      <option value="center">Center</option>
-                      <option value="right">Right</option>
+                      <option value="left">
+                        Left
+                      </option>
+
+                      <option value="center">
+                        Center
+                      </option>
+
+                      <option value="right">
+                        Right
+                      </option>
                     </select>
                   </label>
 
                   <label>
                     <span>Color</span>
+
                     <input
                       className="designer-property-color"
                       type="color"
-                      value={selectedElement.color ?? "#111827"}
+                      value={
+                        selectedElement.color ??
+                        "#111827"
+                      }
                       onChange={(event) =>
-                        updateElement(selectedElement.id, {
-                          color: event.target.value,
-                        })
+                        updateElement(
+                          selectedElement.id,
+                          {
+                            color:
+                              event.target.value,
+                          },
+                        )
                       }
                     />
                   </label>
@@ -725,28 +1091,36 @@ export default function LabelDesignerPage() {
                 <div className="designer-position-controls">
                   <button
                     type="button"
-                    onClick={() => moveSelected("up")}
+                    onClick={() =>
+                      moveSelected("up")
+                    }
                   >
                     ↑
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => moveSelected("left")}
+                    onClick={() =>
+                      moveSelected("left")
+                    }
                   >
                     ←
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => moveSelected("right")}
+                    onClick={() =>
+                      moveSelected("right")
+                    }
                   >
                     →
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => moveSelected("down")}
+                    onClick={() =>
+                      moveSelected("down")
+                    }
                   >
                     ↓
                   </button>
@@ -773,26 +1147,40 @@ export default function LabelDesignerPage() {
                 <label className="designer-toggle">
                   <input
                     type="checkbox"
-                    checked={selectedElement.locked ?? false}
+                    checked={
+                      selectedElement.locked ?? false
+                    }
                     onChange={(event) =>
-                      updateElement(selectedElement.id, {
-                        locked: event.target.checked,
-                      })
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          locked:
+                            event.target.checked,
+                        },
+                      )
                     }
                   />
+
                   <span>Lock element</span>
                 </label>
 
                 <label className="designer-toggle">
                   <input
                     type="checkbox"
-                    checked={selectedElement.hidden ?? false}
+                    checked={
+                      selectedElement.hidden ?? false
+                    }
                     onChange={(event) =>
-                      updateElement(selectedElement.id, {
-                        hidden: event.target.checked,
-                      })
+                      updateElement(
+                        selectedElement.id,
+                        {
+                          hidden:
+                            event.target.checked,
+                        },
+                      )
                     }
                   />
+
                   <span>Hide element</span>
                 </label>
               </div>
@@ -801,5 +1189,31 @@ export default function LabelDesignerPage() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function ResizeHandle({
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  onPointerDown: (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => void;
+  onPointerMove: (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => void;
+  onPointerUp: (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => void;
+}) {
+  return (
+    <div
+      className="label-resize-handle"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onClick={(event) => event.stopPropagation()}
+    />
   );
 }
