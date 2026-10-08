@@ -20,6 +20,9 @@ export default function ProductsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<StoredProduct | null>(null);
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] =
@@ -117,6 +120,15 @@ export default function ProductsPage() {
       });
 
       setProducts(updatedProducts);
+
+      const updatedProduct = updatedProducts.find(
+        (product) => product.id === editingId
+      );
+
+      if (updatedProduct) {
+        setSelectedProduct(updatedProduct);
+      }
+
       resetForm();
       return;
     }
@@ -131,10 +143,14 @@ export default function ProductsPage() {
     });
 
     setProducts((current) => [...current, product]);
+
     resetForm();
+
+    setSelectedProduct(product);
   }
 
   function handleEdit(product: StoredProduct) {
+    setSelectedProduct(null);
     setEditingId(product.id);
 
     setForm({
@@ -160,6 +176,7 @@ export default function ProductsPage() {
     });
 
     setProducts((current) => [...current, duplicate]);
+    setSelectedProduct(duplicate);
   }
 
   function handleArchive(product: StoredProduct) {
@@ -174,12 +191,28 @@ export default function ProductsPage() {
     const updatedProducts = archiveProduct(product.id);
 
     setProducts(updatedProducts);
+
+    const updatedProduct = updatedProducts.find(
+      (item) => item.id === product.id
+    );
+
+    if (updatedProduct) {
+      setSelectedProduct(updatedProduct);
+    }
   }
 
   function handleRestore(product: StoredProduct) {
     const updatedProducts = restoreProduct(product.id);
 
     setProducts(updatedProducts);
+
+    const updatedProduct = updatedProducts.find(
+      (item) => item.id === product.id
+    );
+
+    if (updatedProduct) {
+      setSelectedProduct(updatedProduct);
+    }
   }
 
   function handleDeleteProduct(id: string) {
@@ -194,6 +227,30 @@ export default function ProductsPage() {
     const updatedProducts = deleteProduct(id);
 
     setProducts(updatedProducts);
+    setSelectedProduct(null);
+  }
+
+  function handleSelectProduct(product: StoredProduct) {
+    setSelectedProduct(product);
+    setShowForm(false);
+    setEditingId(null);
+  }
+
+  function formatDate(value: string) {
+    if (!value) {
+      return "—";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "—";
+    }
+
+    return date.toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   }
 
   return (
@@ -216,6 +273,7 @@ export default function ProductsPage() {
             if (showForm) {
               resetForm();
             } else {
+              setSelectedProduct(null);
               setEditingId(null);
               setShowForm(true);
             }
@@ -225,10 +283,322 @@ export default function ProductsPage() {
         </button>
       </section>
 
+      {selectedProduct && (
+        <section className="product-detail-panel">
+          <div className="product-detail-header">
+            <div>
+              <span className="section-label">
+                PRODUCT DETAILS
+              </span>
+
+              <h3>{selectedProduct.name}</h3>
+
+              <p>
+                Complete product information and available
+                product actions.
+              </p>
+            </div>
+
+            <button
+              className="secondary-button"
+              onClick={() => setSelectedProduct(null)}
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="product-detail-grid">
+            <div className="detail-item">
+              <span>Product Name</span>
+              <strong>{selectedProduct.name}</strong>
+            </div>
+
+            <div className="detail-item">
+              <span>SKU</span>
+              <strong>{selectedProduct.sku}</strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Barcode</span>
+              <strong>
+                {selectedProduct.barcode || "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Category</span>
+              <strong>
+                {selectedProduct.category || "Not assigned"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Selling Price</span>
+              <strong>
+                {selectedProduct.price
+                  ? `₹${selectedProduct.price}`
+                  : "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Stock</span>
+              <strong>
+                {selectedProduct.stock || "Not set"}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Status</span>
+
+              {selectedProduct.archived ? (
+                <span className="status-badge archived">
+                  Archived
+                </span>
+              ) : (
+                <span className="status-badge active">
+                  Active
+                </span>
+              )}
+            </div>
+
+            <div className="detail-item">
+              <span>Product ID</span>
+              <strong className="detail-id">
+                {selectedProduct.id}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Created</span>
+              <strong>
+                {formatDate(selectedProduct.createdAt)}
+              </strong>
+            </div>
+
+            <div className="detail-item">
+              <span>Last Updated</span>
+              <strong>
+                {formatDate(selectedProduct.updatedAt)}
+              </strong>
+            </div>
+          </div>
+
+          <div className="product-detail-actions">
+            {!selectedProduct.archived && (
+              <>
+                <button
+                  className="primary-button"
+                  onClick={() =>
+                    handleEdit(selectedProduct)
+                  }
+                >
+                  Edit Product
+                </button>
+
+                <button
+                  className="table-action"
+                  onClick={() =>
+                    handleDuplicate(selectedProduct)
+                  }
+                >
+                  Duplicate
+                </button>
+
+                <button
+                  className="table-action"
+                  onClick={() =>
+                    handleArchive(selectedProduct)
+                  }
+                >
+                  Archive
+                </button>
+
+                <button
+                  className="table-action"
+                  onClick={() =>
+                    window.alert(
+                      "Label generation module will be connected here."
+                    )
+                  }
+                >
+                  Generate Label
+                </button>
+
+                <button
+                  className="table-action"
+                  onClick={() =>
+                    window.alert(
+                      "Barcode generator module will be connected here."
+                    )
+                  }
+                >
+                  Generate Barcode
+                </button>
+              </>
+            )}
+
+            {selectedProduct.archived && (
+              <button
+                className="primary-button"
+                onClick={() =>
+                  handleRestore(selectedProduct)
+                }
+              >
+                Restore Product
+              </button>
+            )}
+
+            <button
+              className="delete-button"
+              onClick={() =>
+                handleDeleteProduct(selectedProduct.id)
+              }
+            >
+              Delete Permanently
+            </button>
+          </div>
+        </section>
+      )}
+
+      {showForm && (
+        <section className="product-form-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="section-label">
+                {editingId
+                  ? "EDIT PRODUCT"
+                  : "NEW PRODUCT"}
+              </span>
+
+              <h3>
+                {editingId
+                  ? "Edit product"
+                  : "Add product"}
+              </h3>
+            </div>
+          </div>
+
+          <form
+            className="product-form"
+            onSubmit={handleSubmit}
+          >
+            <div className="form-field">
+              <label htmlFor="name">
+                Product Name *
+              </label>
+
+              <input
+                id="name"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Enter product name"
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="sku">
+                SKU *
+              </label>
+
+              <input
+                id="sku"
+                name="sku"
+                value={form.sku}
+                onChange={handleChange}
+                placeholder="e.g. PROD-001"
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="barcode">
+                Barcode
+              </label>
+
+              <input
+                id="barcode"
+                name="barcode"
+                value={form.barcode}
+                onChange={handleChange}
+                placeholder="Enter barcode"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="category">
+                Category
+              </label>
+
+              <input
+                id="category"
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+                placeholder="e.g. Cosmetics"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="price">
+                Selling Price
+              </label>
+
+              <input
+                id="price"
+                name="price"
+                value={form.price}
+                onChange={handleChange}
+                placeholder="e.g. 499"
+                inputMode="decimal"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="stock">
+                Stock
+              </label>
+
+              <input
+                id="stock"
+                name="stock"
+                value={form.stock}
+                onChange={handleChange}
+                placeholder="e.g. 100"
+                inputMode="numeric"
+              />
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={resetForm}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="primary-button"
+              >
+                {editingId
+                  ? "Update Product"
+                  : "Save Product"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
       <section className="product-list-panel">
         <div className="panel-heading">
           <div>
-            <span className="section-label">PRODUCT CATALOG</span>
+            <span className="section-label">
+              PRODUCT CATALOG
+            </span>
 
             <h3>Product overview</h3>
           </div>
@@ -256,7 +626,9 @@ export default function ProductsPage() {
               setCategoryFilter(event.target.value)
             }
           >
-            <option value="All">All Categories</option>
+            <option value="All">
+              All Categories
+            </option>
 
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -287,138 +659,6 @@ export default function ProductsPage() {
             </option>
           </select>
         </div>
-
-        {showForm && (
-          <section className="product-form-panel">
-            <div className="panel-heading">
-              <div>
-                <span className="section-label">
-                  {editingId
-                    ? "EDIT PRODUCT"
-                    : "NEW PRODUCT"}
-                </span>
-
-                <h3>
-                  {editingId
-                    ? "Edit product"
-                    : "Add product"}
-                </h3>
-              </div>
-            </div>
-
-            <form
-              className="product-form"
-              onSubmit={handleSubmit}
-            >
-              <div className="form-field">
-                <label htmlFor="name">
-                  Product Name *
-                </label>
-
-                <input
-                  id="name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Enter product name"
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label htmlFor="sku">
-                  SKU *
-                </label>
-
-                <input
-                  id="sku"
-                  name="sku"
-                  value={form.sku}
-                  onChange={handleChange}
-                  placeholder="e.g. PROD-001"
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label htmlFor="barcode">
-                  Barcode
-                </label>
-
-                <input
-                  id="barcode"
-                  name="barcode"
-                  value={form.barcode}
-                  onChange={handleChange}
-                  placeholder="Enter barcode"
-                />
-              </div>
-
-              <div className="form-field">
-                <label htmlFor="category">
-                  Category
-                </label>
-
-                <input
-                  id="category"
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  placeholder="e.g. Cosmetics"
-                />
-              </div>
-
-              <div className="form-field">
-                <label htmlFor="price">
-                  Selling Price
-                </label>
-
-                <input
-                  id="price"
-                  name="price"
-                  value={form.price}
-                  onChange={handleChange}
-                  placeholder="e.g. 499"
-                  inputMode="decimal"
-                />
-              </div>
-
-              <div className="form-field">
-                <label htmlFor="stock">
-                  Stock
-                </label>
-
-                <input
-                  id="stock"
-                  name="stock"
-                  value={form.stock}
-                  onChange={handleChange}
-                  placeholder="e.g. 100"
-                  inputMode="numeric"
-                />
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={resetForm}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="primary-button"
-                >
-                  {editingId
-                    ? "Update Product"
-                    : "Save Product"}
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
 
         {products.length === 0 ? (
           <div className="empty-state">
@@ -472,7 +712,14 @@ export default function ProductsPage() {
                 {filteredProducts.map((product) => (
                   <tr key={product.id}>
                     <td>
-                      <strong>{product.name}</strong>
+                      <button
+                        className="product-name-button"
+                        onClick={() =>
+                          handleSelectProduct(product)
+                        }
+                      >
+                        {product.name}
+                      </button>
                     </td>
 
                     <td>{product.sku}</td>
@@ -509,6 +756,15 @@ export default function ProductsPage() {
 
                     <td>
                       <div className="product-actions">
+                        <button
+                          className="table-action"
+                          onClick={() =>
+                            handleSelectProduct(product)
+                          }
+                        >
+                          View
+                        </button>
+
                         {!product.archived && (
                           <>
                             <button
