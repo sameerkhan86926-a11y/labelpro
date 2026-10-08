@@ -4,8 +4,29 @@ export type StoredProduct = {
   sku: string;
   barcode: string;
   category: string;
+
+  description: string;
+
+  mrp: string;
   price: string;
+  costPrice: string;
+
   stock: string;
+  minimumStock: string;
+
+  batchNumber: string;
+  manufacturingDate: string;
+  expiryDate: string;
+
+  supplier: string;
+  manufacturer: string;
+
+  weight: string;
+  unit: string;
+  countryOfOrigin: string;
+
+  productImage: string;
+
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -36,8 +57,38 @@ export function getProducts(): StoredProduct[] {
     }
 
     return parsed.map((product) => ({
-      ...product,
+      id: product.id ?? "",
+      name: product.name ?? "",
+      sku: product.sku ?? "",
+      barcode: product.barcode ?? "",
+      category: product.category ?? "",
+
+      description: product.description ?? "",
+
+      mrp: product.mrp ?? "",
+      price: product.price ?? "",
+      costPrice: product.costPrice ?? "",
+
+      stock: product.stock ?? "",
+      minimumStock: product.minimumStock ?? "",
+
+      batchNumber: product.batchNumber ?? "",
+      manufacturingDate: product.manufacturingDate ?? "",
+      expiryDate: product.expiryDate ?? "",
+
+      supplier: product.supplier ?? "",
+      manufacturer: product.manufacturer ?? "",
+
+      weight: product.weight ?? "",
+      unit: product.unit ?? "",
+      countryOfOrigin: product.countryOfOrigin ?? "",
+
+      productImage: product.productImage ?? "",
+
       archived: product.archived === true,
+
+      createdAt: product.createdAt ?? "",
+      updatedAt: product.updatedAt ?? "",
     }));
   } catch {
     return [];
