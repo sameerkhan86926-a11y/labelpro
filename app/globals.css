@@ -2459,5 +2459,434 @@ a {
   color: #2563eb;
   transform: none;
 }
+/* =========================================================
+   LABELPRO — TEMPLATES
+   ========================================================= */
 
+.templates-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.templates-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.templates-breadcrumb {
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.templates-title {
+  margin: 0;
+  color: #111827;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.templates-subtitle {
+  margin: 8px 0 0;
+  max-width: 620px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.templates-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid #111827;
+  border-radius: 9px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.templates-primary-button:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+  box-shadow: 0 5px 14px rgba(17, 24, 39, 0.14);
+  transform: translateY(-1px);
+}
+
+.templates-primary-button:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.templates-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  padding: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
+}
+
+.templates-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 18px;
+  border: 1px solid #dbe1ea;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.templates-empty h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.templates-empty p {
+  max-width: 430px;
+  margin: 8px 0 22px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   TEMPLATE GRID
+   ========================================================= */
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(320px, 1fr)
+  );
+  gap: 20px;
+}
+
+/* =========================================================
+   TEMPLATE CARD
+   ========================================================= */
+
+.template-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.template-card:hover {
+  border-color: #d1d5db;
+  box-shadow:
+    0 8px 24px rgba(17, 24, 39, 0.08);
+  transform: translateY(-2px);
+}
+
+/* =========================================================
+   TEMPLATE PREVIEW
+   ========================================================= */
+
+.template-preview-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 210px;
+  padding: 24px;
+  overflow: hidden;
+  border-bottom: 1px solid #e5e7eb;
+  background:
+    linear-gradient(
+      45deg,
+      #f1f5f9 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      -45deg,
+      #f1f5f9 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 75%,
+      #f1f5f9 75%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 75%,
+      #f1f5f9 75%
+    );
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.template-preview {
+  position: relative;
+  max-width: 100%;
+  max-height: 180px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.12);
+}
+
+.template-preview-element {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* =========================================================
+   TEMPLATE CONTENT
+   ========================================================= */
+
+.template-card-content {
+  padding: 18px;
+}
+
+.template-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.template-card-top h2 {
+  margin: 0;
+  overflow: hidden;
+  color: #111827;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-card-top p {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.template-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+
+.template-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.template-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.template-edit-button {
+  border: 1px solid #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.template-edit-button:hover {
+  border-color: #1f2937;
+  background: #1f2937;
+}
+
+.template-secondary-button {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+}
+
+.template-secondary-button:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.template-danger-button {
+  border: 1px solid #fecaca;
+  background: #ffffff;
+  color: #b91c1c;
+}
+
+.template-danger-button:hover {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+/* =========================================================
+   RESPONSIVE — TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .templates-page {
+    padding: 24px;
+  }
+
+  .templates-grid {
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(280px, 1fr)
+    );
+  }
+}
+
+/* =========================================================
+   RESPONSIVE — MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .templates-page {
+    padding: 18px 14px;
+  }
+
+  .templates-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .templates-title {
+    font-size: 26px;
+  }
+
+  .templates-subtitle {
+    font-size: 13px;
+  }
+
+  .templates-primary-button {
+    width: 100%;
+  }
+
+  .templates-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .template-preview-area {
+    min-height: 190px;
+    padding: 18px;
+  }
+
+  .template-card-content {
+    padding: 16px;
+  }
+
+  .template-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .template-actions button {
+    min-height: 40px;
+  }
+
+  .templates-empty {
+    min-height: 300px;
+    padding: 28px 20px;
+  }
+}
+
+/* =========================================================
+   VERY SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 380px) {
+  .templates-page {
+    padding: 14px 10px;
+  }
+
+  .templates-title {
+    font-size: 23px;
+  }
+
+  .template-preview-area {
+    min-height: 170px;
+  }
+
+  .template-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 
