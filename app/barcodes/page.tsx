@@ -53,7 +53,13 @@ export default function BarcodesPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    setProducts(getProducts());
+    const timer = window.setTimeout(() => {
+      setProducts(getProducts());
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -61,31 +67,30 @@ export default function BarcodesPage() {
       return;
     }
 
-    try {
-      setError("");
+    const timer = window.setTimeout(() => {
+      try {
+        JsBarcode(barcodeRef.current, value.trim(), {
+          format,
+          width,
+          height,
+          displayValue,
+          fontSize,
+          margin,
+          textMargin: 5,
+          font: "Arial",
+          background: "#ffffff",
+          lineColor: "#111827",
+        });
+      } catch {
+        setError(
+          "Unable to generate this barcode. Check the value and selected format."
+        );
+      }
+    }, 0);
 
-      JsBarcode(barcodeRef.current, value.trim(), {
-        format,
-        width,
-        height,
-        displayValue,
-        fontSize,
-        margin,
-        textMargin: 5,
-        font: "Arial",
-        background: "#ffffff",
-        lineColor: "#111827",
-        valid: (valid: boolean) => {
-          if (!valid) {
-            setError("This value is not valid for the selected barcode format.");
-          }
-        },
-      });
-    } catch {
-      setError(
-        "Unable to generate this barcode. Check the value and selected format."
-      );
-    }
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [
     value,
     format,
@@ -106,6 +111,7 @@ export default function BarcodesPage() {
   function handleProductChange(productId: string) {
     setSelectedProductId(productId);
     setSuccess("");
+    setError("");
 
     if (!productId) {
       return;
@@ -145,10 +151,8 @@ export default function BarcodesPage() {
       return;
     }
 
-    const svg = barcodeRef.current;
-
     const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svg);
+    const source = serializer.serializeToString(barcodeRef.current);
 
     const blob = new Blob([source], {
       type: "image/svg+xml;charset=utf-8",
@@ -176,10 +180,16 @@ export default function BarcodesPage() {
       barcodeRef.current
     );
 
-    const printWindow = window.open("", "_blank", "width=700,height=500");
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=700,height=500"
+    );
 
     if (!printWindow) {
-      setError("Please allow pop-ups in your browser to print the barcode.");
+      setError(
+        "Please allow pop-ups in your browser to print the barcode."
+      );
       return;
     }
 
@@ -240,8 +250,9 @@ export default function BarcodesPage() {
           <h2>Barcode Generator</h2>
 
           <p>
-            Create professional product barcodes, customize their appearance,
-            save them to products, download the barcode or print it directly.
+            Create professional product barcodes, customize their
+            appearance, save them to products, download the barcode
+            or print it directly.
           </p>
         </div>
 
