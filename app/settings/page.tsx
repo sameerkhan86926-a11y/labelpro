@@ -31,32 +31,99 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const STORAGE_KEY = "labelpro_settings";
 
+function normalizeSettings(
+  value: Partial<AppSettings>
+): AppSettings {
+  const width = Number(value.labelWidth ?? DEFAULT_SETTINGS.labelWidth);
+  const height = Number(value.labelHeight ?? DEFAULT_SETTINGS.labelHeight);
+  const copies = Number(value.defaultCopies ?? DEFAULT_SETTINGS.defaultCopies);
+  const spacing = Number(value.labelSpacing ?? DEFAULT_SETTINGS.labelSpacing);
+
+  return {
+    workspaceName:
+      typeof value.workspaceName === "string"
+        ? value.workspaceName
+        : DEFAULT_SETTINGS.workspaceName,
+
+    businessName:
+      typeof value.businessName === "string"
+        ? value.businessName
+        : DEFAULT_SETTINGS.businessName,
+
+    labelWidth:
+      Number.isFinite(width) && width > 0 && width <= 1000
+        ? width
+        : DEFAULT_SETTINGS.labelWidth,
+
+    labelHeight:
+      Number.isFinite(height) && height > 0 && height <= 1000
+        ? height
+        : DEFAULT_SETTINGS.labelHeight,
+
+    unit: value.unit === "inch" ? "inch" : "mm",
+
+    defaultCopies:
+      Number.isInteger(copies) && copies >= 1 && copies <= 1000
+        ? copies
+        : DEFAULT_SETTINGS.defaultCopies,
+
+    showBorder:
+      typeof value.showBorder === "boolean"
+        ? value.showBorder
+        : DEFAULT_SETTINGS.showBorder,
+
+    labelSpacing:
+      Number.isFinite(spacing) && spacing >= 0 && spacing <= 100
+        ? spacing
+        : DEFAULT_SETTINGS.labelSpacing,
+
+    currency: ["INR", "USD", "EUR", "GBP"].includes(
+      String(value.currency)
+    )
+      ? String(value.currency)
+      : DEFAULT_SETTINGS.currency,
+
+    theme: value.theme === "dark" ? "dark" : "light",
+  };
+}
+
+function loadInitialSettings(): AppSettings {
+  if (typeof window === "undefined") {
+    return DEFAULT_SETTINGS;
+  }
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (saved) {
+      return normalizeSettings(
+        JSON.parse(saved) as Partial<AppSettings>
+      );
+    }
+  } catch {
+    // Invalid or unavailable saved data falls back to defaults.
+  }
+
+  return DEFAULT_SETTINGS;
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] =
     useState<AppSettings>(DEFAULT_SETTINGS);
+
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-
-      if (saved) {
-        const parsed = JSON.parse(saved) as Partial<AppSettings>;
-
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          ...parsed,
-          unit: parsed.unit === "inch" ? "inch" : "mm",
-          theme: parsed.theme === "dark" ? "dark" : "light",
-        });
-      }
-    } catch {
-      setMessage("Saved settings could not be loaded.");
-    }
-
+    setSettings(loadInitialSettings());
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    if (ready) {
+      document.documentElement.dataset.theme = settings.theme;
+    }
+  }, [ready, settings.theme]);
 
   function update<K extends keyof AppSettings>(
     key: K,
@@ -72,24 +139,28 @@ export default function SettingsPage() {
 
   function saveSettings() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      const normalized = normalizeSettings(settings);
 
-      document.documentElement.dataset.theme = settings.theme;
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(normalized)
+      );
 
+      setSettings(normalized);
       setMessage("Settings saved successfully.");
     } catch {
-      setMessage("Settings could not be saved. Check browser storage.");
+      setMessage(
+        "Settings could not be saved. Please check browser storage."
+      );
     }
   }
 
   function resetSettings() {
     const confirmed = window.confirm(
-      "Reset all LabelPro settings to their default values?"
+      "Reset LabelPro settings to their default values? Products and templates will not be deleted."
     );
 
     if (!confirmed) return;
-
-    setSettings(DEFAULT_SETTINGS);
 
     try {
       localStorage.setItem(
@@ -97,31 +168,40 @@ export default function SettingsPage() {
         JSON.stringify(DEFAULT_SETTINGS)
       );
 
-      document.documentElement.dataset.theme = "light";
-      setMessage("Settings reset to defaults.");
+      setSettings(DEFAULT_SETTINGS);
+      setMessage("Settings restored to defaults.");
     } catch {
-      setMessage("Could not reset settings.");
+      setMessage("Settings could not be reset.");
     }
   }
 
   function exportSettings() {
-    const file = new Blob(
-      [JSON.stringify(settings, null, 2)],
-      { type: "application/json" }
-    );
+    try {
+      const blob = new Blob(
+        [JSON.stringify(settings, null, 2)],
+        { type: "application/json" }
+      );
 
-    const url = URL.createObjectURL(file);
-    const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
 
-    link.href = url;
-    link.download = "labelpro-settings.json";
-    link.click();
+      link.href = url;
+      link.download = "labelpro-settings.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
-    URL.revokeObjectURL(url);
-    setMessage("Settings export started.");
+      URL.revokeObjectURL(url);
+
+      setMessage("Settings export started.");
+    } catch {
+      setMessage("Settings could not be exported.");
+    }
   }
 
-  function importSettings(event: React.ChangeEvent<HTMLInputElement>) {
+  function importSettings(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = event.target.files?.[0];
 
     if (!file) return;
@@ -130,36 +210,36 @@ export default function SettingsPage() {
 
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as Partial<AppSettings>;
-
-        const imported: AppSettings = {
-          ...DEFAULT_SETTINGS,
-          ...parsed,
-          unit: parsed.unit === "inch" ? "inch" : "mm",
-          theme: parsed.theme === "dark" ? "dark" : "light",
-        };
+        const parsed = JSON.parse(
+          String(reader.result)
+        ) as Partial<AppSettings>;
 
         if (
-          !Number.isFinite(imported.labelWidth) ||
-          !Number.isFinite(imported.labelHeight) ||
-          imported.labelWidth <= 0 ||
-          imported.labelHeight <= 0 ||
-          !Number.isFinite(imported.defaultCopies) ||
-          imported.defaultCopies < 1 ||
-          !Number.isFinite(imported.labelSpacing) ||
-          imported.labelSpacing < 0
+          !parsed ||
+          typeof parsed !== "object" ||
+          Array.isArray(parsed)
         ) {
-          throw new Error("Invalid settings values");
+          throw new Error("Invalid settings file");
         }
 
-        setSettings(imported);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
-        document.documentElement.dataset.theme = imported.theme;
+        const imported = normalizeSettings(parsed);
 
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(imported)
+        );
+
+        setSettings(imported);
         setMessage("Settings imported successfully.");
       } catch {
-        setMessage("Invalid settings file. Please choose a LabelPro settings JSON file.");
+        setMessage(
+          "Invalid settings file. Please select a valid LabelPro settings JSON file."
+        );
       }
+    };
+
+    reader.onerror = () => {
+      setMessage("The selected file could not be read.");
     };
 
     reader.readAsText(file);
@@ -178,9 +258,15 @@ export default function SettingsPage() {
     <main className={`settings-page ${settings.theme}`}>
       <header className="settings-header">
         <div>
-          <span className="settings-eyebrow">LABELPRO WORKSPACE</span>
+          <span className="settings-eyebrow">
+            LABELPRO WORKSPACE
+          </span>
+
           <h1>Settings</h1>
-          <p>Manage your workspace, label defaults and preferences.</p>
+
+          <p>
+            Manage your workspace, label defaults and preferences.
+          </p>
         </div>
 
         <Link href="/" className="settings-back">
@@ -197,6 +283,7 @@ export default function SettingsPage() {
       <section className="settings-card">
         <div className="card-heading">
           <span className="settings-icon">W</span>
+
           <div>
             <h2>Workspace</h2>
             <p>Customize your business workspace.</p>
@@ -206,9 +293,12 @@ export default function SettingsPage() {
         <div className="settings-grid">
           <label className="field">
             <span>Workspace name</span>
+
             <input
               value={settings.workspaceName}
-              onChange={(e) => update("workspaceName", e.target.value)}
+              onChange={(e) =>
+                update("workspaceName", e.target.value)
+              }
               placeholder="My Workspace"
               maxLength={100}
             />
@@ -216,9 +306,12 @@ export default function SettingsPage() {
 
           <label className="field">
             <span>Business name</span>
+
             <input
               value={settings.businessName}
-              onChange={(e) => update("businessName", e.target.value)}
+              onChange={(e) =>
+                update("businessName", e.target.value)
+              }
               placeholder="Enter your business name"
               maxLength={100}
             />
@@ -229,6 +322,7 @@ export default function SettingsPage() {
       <section className="settings-card">
         <div className="card-heading">
           <span className="settings-icon">L</span>
+
           <div>
             <h2>Default Label Size</h2>
             <p>Set the starting dimensions for new labels.</p>
@@ -238,6 +332,7 @@ export default function SettingsPage() {
         <div className="settings-grid three-columns">
           <label className="field">
             <span>Width</span>
+
             <input
               type="number"
               min="1"
@@ -251,6 +346,7 @@ export default function SettingsPage() {
 
           <label className="field">
             <span>Height</span>
+
             <input
               type="number"
               min="1"
@@ -264,10 +360,14 @@ export default function SettingsPage() {
 
           <label className="field">
             <span>Measurement unit</span>
+
             <select
               value={settings.unit}
               onChange={(e) =>
-                update("unit", e.target.value as AppSettings["unit"])
+                update(
+                  "unit",
+                  e.target.value as AppSettings["unit"]
+                )
               }
             >
               <option value="mm">Millimeters (mm)</option>
@@ -277,14 +377,15 @@ export default function SettingsPage() {
         </div>
 
         <div className="settings-note">
-          Default size: {settings.labelWidth} × {settings.labelHeight}{" "}
-          {settings.unit}
+          Default size: {settings.labelWidth} ×{" "}
+          {settings.labelHeight} {settings.unit}
         </div>
       </section>
 
       <section className="settings-card">
         <div className="card-heading">
           <span className="settings-icon">P</span>
+
           <div>
             <h2>Print Preferences</h2>
             <p>Choose default print options for your labels.</p>
@@ -294,6 +395,7 @@ export default function SettingsPage() {
         <div className="settings-grid three-columns">
           <label className="field">
             <span>Default copies</span>
+
             <input
               type="number"
               min="1"
@@ -307,6 +409,7 @@ export default function SettingsPage() {
 
           <label className="field">
             <span>Spacing (mm)</span>
+
             <input
               type="number"
               min="0"
@@ -335,14 +438,15 @@ export default function SettingsPage() {
         </div>
 
         <div className="settings-note">
-          These are saved preferences. They will not change Print Center
-          behavior until that page is connected to these settings.
+          These preferences are saved here. Print Center must be
+          connected to use them automatically.
         </div>
       </section>
 
       <section className="settings-card">
         <div className="card-heading">
           <span className="settings-icon">A</span>
+
           <div>
             <h2>Appearance & Currency</h2>
             <p>Choose your preferred display options.</p>
@@ -352,10 +456,14 @@ export default function SettingsPage() {
         <div className="settings-grid">
           <label className="field">
             <span>Theme preference</span>
+
             <select
               value={settings.theme}
               onChange={(e) =>
-                update("theme", e.target.value as AppSettings["theme"])
+                update(
+                  "theme",
+                  e.target.value as AppSettings["theme"]
+                )
               }
             >
               <option value="light">Light</option>
@@ -365,9 +473,12 @@ export default function SettingsPage() {
 
           <label className="field">
             <span>Currency</span>
+
             <select
               value={settings.currency}
-              onChange={(e) => update("currency", e.target.value)}
+              onChange={(e) =>
+                update("currency", e.target.value)
+              }
             >
               <option value="INR">Indian Rupee (₹ INR)</option>
               <option value="USD">US Dollar ($ USD)</option>
@@ -378,14 +489,15 @@ export default function SettingsPage() {
         </div>
 
         <div className="settings-note">
-          Currency and theme are saved as preferences. Other pages must read
-          these settings to apply them globally.
+          Theme preference applies to this page. Currency and
+          print preferences require integration with other modules.
         </div>
       </section>
 
       <section className="settings-card">
         <div className="card-heading">
           <span className="settings-icon">D</span>
+
           <div>
             <h2>Settings Backup</h2>
             <p>Export or restore your LabelPro settings.</p>
@@ -403,6 +515,7 @@ export default function SettingsPage() {
 
           <label className="secondary-action import-button">
             Import Settings
+
             <input
               type="file"
               accept=".json,application/json"
@@ -416,9 +529,10 @@ export default function SettingsPage() {
       <section className="settings-danger">
         <div>
           <h2>Reset Settings</h2>
+
           <p>
-            Restore the settings on this page to their default values.
-            Your products and saved templates will not be deleted.
+            Restore this page&apos;s settings to their default
+            values. Products and saved templates will not be deleted.
           </p>
         </div>
 
@@ -719,7 +833,7 @@ export default function SettingsPage() {
         .save-button {
           border: 1px solid #2858c5;
           background: #2858c5;
-          color: #fff;
+          color: #ffffff;
         }
 
         .settings-loading {
