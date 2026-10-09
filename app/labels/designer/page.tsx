@@ -399,32 +399,30 @@ export default function LabelDesignerPage() {
     [],
   );
 
- const loadProducts = useCallback(() => {
-  const availableProducts = getProducts().filter(
-    (product) => !product.archived
-  );
+ useEffect(() => {
+  const timer = window.setTimeout(() => {
+    const availableProducts = getProducts().filter(
+      (product) => !product.archived
+    );
 
-  setProducts(availableProducts);
+    setProducts(availableProducts);
 
-  const params = new URLSearchParams(
-    window.location.search
-  );
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get("productId");
 
-  const productId = params.get("productId");
+    if (productId) {
+      const product = availableProducts.find(
+        (item) => String(item.id) === productId
+      );
 
-  if (!productId) return;
+      if (product) {
+        setSelectedProductId(String(product.id));
+      }
+    }
+  }, 0);
 
-  const product = availableProducts.find(
-    (item) => String(item.id) === productId
-  );
-
-  if (product) {
-    setSelectedProductId(String(product.id));
-  }
+  return () => window.clearTimeout(timer);
 }, []);
-  useEffect(() => {
-  loadProducts();
-}, [loadProducts]);
   function updateTemplate(
     updates: Partial<LabelTemplate>,
   ) {
