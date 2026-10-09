@@ -4,6 +4,105 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProducts } from "./lib/storage";
 
+type DashboardStats = {
+  products: number;
+  labels: number;
+  printed: number;
+  templates: number;
+};
+
+const LABEL_STORAGE_KEYS = [
+  "labelpro_labels",
+  "labelpro_saved_labels",
+  "labelpro_designs",
+];
+
+const TEMPLATE_STORAGE_KEYS = [
+  "labelpro_templates",
+  "labelpro_saved_templates",
+];
+
+function getArrayFromStorage(keys: string[]): unknown[] {
+  if (typeof window === "undefined") return [];
+
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+
+      if (!raw) continue;
+
+      const parsed: unknown = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch (error) {
+      console.error(`Unable to read ${key}:`, error);
+    }
+  }
+
+  return [];
+}
+
+function getPrintedCount(): number {
+  if (typeof window === "undefined") return 0;
+
+  const keys = [
+    "labelpro_print_history",
+    "labelpro_printed_labels",
+    "labelpro_print_history_v1",
+  ];
+
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+
+      if (!raw) continue;
+
+      const parsed: unknown = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed.length;
+      }
+
+      if (parsed && typeof parsed === "object") {
+        const data = parsed as {
+          items?: unknown;
+          records?: unknown;
+          history?: unknown;
+        };
+
+        if (Array.isArray(data.items)) return data.items.length;
+        if (Array.isArray(data.records)) return data.records.length;
+        if (Array.isArray(data.history)) return data.history.length;
+      }
+    } catch (error) {
+      console.error(`Unable to read print history ${key}:`, error);
+    }
+  }
+
+  return 0;
+}
+
+function readDashboardStats(): DashboardStats {
+  let products = 0;
+
+  try {
+    products = getProducts().filter(
+      (product) => !product.archived
+    ).length;
+  } catch (error) {
+    console.error("Unable to read products:", error);
+  }
+
+  return {
+    products,
+    labels: getArrayFromStorage(LABEL_STORAGE_KEYS).length,
+    printed: getPrintedCount(),
+    templates: getArrayFromStorage(TEMPLATE_STORAGE_KEYS).length,
+  };
+}
+
 const quickActions = [
   {
     title: "Create Label",
@@ -101,29 +200,47 @@ export default function Home() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [productCount, setProductCount] = useState(0);
+
+  const [stats, setStats] = useState<DashboardStats>({
+    products: 0,
+    labels: 0,
+    printed: 0,
+    templates: 0,
+  });
 
   useEffect(() => {
-    function refreshProductCount() {
-      setProductCount(getProducts().filter((product) => !product.archived).length);
-    }
+    const refreshStats = () => {
+      setStats(readDashboardStats());
+    };
 
-    refreshProductCount();
+    refreshStats();
 
-    window.addEventListener("focus", refreshProductCount);
-    window.addEventListener("storage", refreshProductCount);
+    window.addEventListener("focus", refreshStats);
+    window.addEventListener("storage", refreshStats);
+    window.addEventListener("pageshow", refreshStats);
+    window.addEventListener("labelpro-products-updated", refreshStats);
+    window.addEventListener("labelpro-labels-updated", refreshStats);
+    window.addEventListener("labelpro-templates-updated", refreshStats);
+    window.addEventListener("labelpro-print-history-updated", refreshStats);
 
     return () => {
-      window.removeEventListener("focus", refreshProductCount);
-      window.removeEventListener("storage", refreshProductCount);
+      window.removeEventListener("focus", refreshStats);
+      window.removeEventListener("storage", refreshStats);
+      window.removeEventListener("pageshow", refreshStats);
+      window.removeEventListener("labelpro-products-updated", refreshStats);
+      window.removeEventListener("labelpro-labels-updated", refreshStats);
+      window.removeEventListener("labelpro-templates-updated", refreshStats);
+      window.removeEventListener(
+        "labelpro-print-history-updated",
+        refreshStats
+      );
     };
   }, []);
 
   function navigateTo(label: string, path: string) {
-  setActiveTab(label);
-
-  router.push(path);
-}
+    setActiveTab(label);
+    router.push(path);
+  }
 
   return (
     <main className="app-shell">
@@ -156,7 +273,9 @@ export default function Home() {
         <div className="sidebar-bottom">
           <button
             type="button"
-            className="nav-item"
+            className={`nav-item ${
+              activeTab === "Settings" ? "active" : ""
+            }`}
             onClick={() => navigateTo("Settings", "/settings/")}
           >
             <span className="nav-dot" />
@@ -181,7 +300,9 @@ export default function Home() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => navigateTo("Import / Export", "/import-export/")}
+              onClick={() =>
+                navigateTo("Import / Export", "/import-export/")
+              }
             >
               Backup / Export
             </button>
@@ -189,7 +310,9 @@ export default function Home() {
             <button
               type="button"
               className="primary-button"
-              onClick={() => navigateTo("Label Designer", "/label-designer/")}
+              onClick={() =>
+                navigateTo("Label Designer", "/labels/designer/")
+              }
             >
               + Create Label
             </button>
@@ -199,7 +322,9 @@ export default function Home() {
         <div className="content">
           <section className="welcome">
             <div>
-              <span className="eyebrow">PROFESSIONAL LABEL WORKSPACE</span>
+              <span className="eyebrow">
+                PROFESSIONAL LABEL WORKSPACE
+              </span>
 
               <h2>
                 Create, manage and print
@@ -222,26 +347,26 @@ export default function Home() {
           <section className="stats-grid">
             <div className="stat-card">
               <span>Total Products</span>
-              <strong>{productCount}</strong>
+              <strong>{stats.products}</strong>
               <small>Active products in workspace</small>
             </div>
 
             <div className="stat-card">
               <span>Labels Created</span>
-              <strong>—</strong>
-              <small>Label statistics not connected yet</small>
+              <strong>{stats.labels}</strong>
+              <small>Saved label designs detected</small>
             </div>
 
             <div className="stat-card">
               <span>Labels Printed</span>
-              <strong>—</strong>
-              <small>Print history not connected yet</small>
+              <strong>{stats.printed}</strong>
+              <small>Recorded print history, if available</small>
             </div>
 
             <div className="stat-card">
               <span>Templates</span>
-              <strong>—</strong>
-              <small>Template statistics not connected yet</small>
+              <strong>{stats.templates}</strong>
+              <small>Saved templates detected</small>
             </div>
           </section>
 
@@ -328,7 +453,7 @@ export default function Home() {
                 <div className="empty-icon">○</div>
                 <strong>Activity tracking not connected</strong>
                 <p>
-                  Activity history will appear here after the activity module
+                  Recent activity will appear here after activity history
                   is implemented.
                 </p>
               </div>
