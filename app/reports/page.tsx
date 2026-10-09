@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getProducts } from "../lib/storage";
 
 type ReportData = {
   products: number;
@@ -9,36 +10,81 @@ type ReportData = {
   qrcodes: number;
 };
 
-const STORAGE_KEYS = {
-  products: "labelpro_products",
-  labels: "labelpro_labels",
-  barcodes: "labelpro_barcodes",
-  qrcodes: "labelpro_qrcodes",
-};
+const LABEL_STORAGE_KEYS = [
+  "labelpro_labels",
+  "labelpro_saved_labels",
+  "labelpro_designs",
+];
 
-function getCount(key: string): number {
+function getLabelsCount(): number {
   try {
-    const value = localStorage.getItem(key);
+    for (const key of LABEL_STORAGE_KEYS) {
+      const raw = localStorage.getItem(key);
 
-    if (!value) return 0;
+      if (!raw) continue;
 
-    const parsed = JSON.parse(value);
+      const parsed: unknown = JSON.parse(raw);
 
-    if (Array.isArray(parsed)) return parsed.length;
-
-    if (parsed && typeof parsed === "object") {
-      if (Array.isArray(parsed.items)) return parsed.items.length;
-      if (Array.isArray(parsed.data)) return parsed.data.length;
+      if (Array.isArray(parsed)) {
+        return parsed.length;
+      }
     }
+  } catch (error) {
+    console.error("Unable to read saved labels:", error);
+  }
 
-    return 0;
-  } catch {
+  return 0;
+}
+
+function getSavedBarcodesCount(): number {
+  try {
+    return getProducts().filter(
+      (product) =>
+        !product.archived &&
+        typeof product.barcode === "string" &&
+        product.barcode.trim().length > 0
+    ).length;
+  } catch (error) {
+    console.error("Unable to read saved product barcodes:", error);
     return 0;
   }
 }
 
+function getSavedQRCodesCount(): number {
+  try {
+    const raw = localStorage.getItem("labelpro_qrcodes");
+
+    if (!raw) return 0;
+
+    const parsed: unknown = JSON.parse(raw);
+
+    if (Array.isArray(parsed)) {
+      return parsed.length;
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const data = parsed as {
+        items?: unknown;
+        data?: unknown;
+      };
+
+      if (Array.isArray(data.items)) {
+        return data.items.length;
+      }
+
+      if (Array.isArray(data.data)) {
+        return data.data.length;
+      }
+    }
+  } catch (error) {
+    console.error("Unable to read saved QR codes:", error);
+  }
+
+  return 0;
+}
+
 function downloadCSV(report: ReportData) {
-  const rows = [
+  const rows: (string | number)[][] = [
     ["LabelPro Report"],
     ["Report Date", new Date().toLocaleDateString("en-IN")],
     [],
@@ -53,7 +99,7 @@ function downloadCSV(report: ReportData) {
     .map((row) =>
       row
         .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
-        .join(","),
+        .join(",")
     )
     .join("\r\n");
 
@@ -66,9 +112,14 @@ function downloadCSV(report: ReportData) {
 
   link.href = url;
   link.download = "labelpro-report.csv";
-  link.click();
 
-  URL.revokeObjectURL(url);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 export default function ReportsPage() {
@@ -80,27 +131,58 @@ export default function ReportsPage() {
   });
 
   const [loaded, setLoaded] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setReport({
-        products: getCount(STORAGE_KEYS.products),
-        labels: getCount(STORAGE_KEYS.labels),
-        barcodes: getCount(STORAGE_KEYS.barcodes),
-        qrcodes: getCount(STORAGE_KEYS.qrcodes),
-      });
+    const updateReport = () => {
+      try {
+        const products = getProducts();
 
-      setLoaded(true);
-    }, 0);
+        setReport({
+          products: products.length,
+          labels: getLabelsCount(),
+          barcodes: getSavedBarcodesCount(),
+          qrcodes: getSavedQRCodesCount(),
+        });
+      } catch (error) {
+        console.error("Unable to load report data:", error);
+      } finally {
+        setLoaded(true);
+      }
+    };
 
-    return () => window.clearTimeout(timer);
-  }, []);
+    const timer = window.setTimeout(updateReport, 0);
+
+    window.addEventListener("storage", updateReport);
+    window.addEventListener("focus", updateReport);
+    window.addEventListener("labelpro-labels-updated", updateReport);
+    window.addEventListener("labelpro-products-updated", updateReport);
+    window.addEventListener("labelpro-qrcodes-updated", updateReport);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("storage", updateReport);
+      window.removeEventListener("focus", updateReport);
+      window.removeEventListener(
+        "labelpro-labels-updated",
+        updateReport
+      );
+      window.removeEventListener(
+        "labelpro-products-updated",
+        updateReport
+      );
+      window.removeEventListener(
+        "labelpro-qrcodes-updated",
+        updateReport
+      );
+    };
+  }, [refreshCount]);
 
   const cards = [
     {
       title: "Total Products",
       value: report.products,
-      description: "Products saved on this device",
+      description: "Saved products, including archived products",
     },
     {
       title: "Total Labels",
@@ -110,12 +192,12 @@ export default function ReportsPage() {
     {
       title: "Barcodes",
       value: report.barcodes,
-      description: "Saved barcode records",
+      description: "Non-archived products with a saved barcode",
     },
     {
       title: "QR Codes",
       value: report.qrcodes,
-      description: "Saved QR code records",
+      description: "QR code records saved on this device",
     },
   ];
 
@@ -170,6 +252,11 @@ export default function ReportsPage() {
           justify-content: center;
         }
 
+        .rp-button:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+
         .rp-primary {
           background: #2563eb;
           color: #ffffff;
@@ -208,6 +295,7 @@ export default function ReportsPage() {
           margin: 0;
           color: #64748b;
           font-size: 13px;
+          line-height: 1.6;
         }
 
         .rp-section {
@@ -262,7 +350,7 @@ export default function ReportsPage() {
           background: #eff6ff;
           color: #1e40af;
           font-size: 13px;
-          line-height: 1.6;
+          line-height: 1.7;
         }
 
         @media (min-width: 800px) {
@@ -291,6 +379,10 @@ export default function ReportsPage() {
           .rp-button {
             padding: 10px 12px;
           }
+
+          .rp-section {
+            padding: 16px;
+          }
         }
       `}</style>
 
@@ -308,6 +400,16 @@ export default function ReportsPage() {
           </a>
 
           <button
+            type="button"
+            className="rp-button"
+            onClick={() => setRefreshCount((count) => count + 1)}
+            disabled={!loaded}
+          >
+            Refresh
+          </button>
+
+          <button
+            type="button"
             className="rp-button rp-primary"
             onClick={() => downloadCSV(report)}
             disabled={!loaded}
@@ -321,17 +423,24 @@ export default function ReportsPage() {
         {cards.map((card) => (
           <article className="rp-card" key={card.title}>
             <p className="rp-card-label">{card.title}</p>
+
             <p className="rp-card-value">
               {loaded ? card.value.toLocaleString("en-IN") : "—"}
             </p>
-            <p className="rp-card-description">{card.description}</p>
+
+            <p className="rp-card-description">
+              {card.description}
+            </p>
           </article>
         ))}
       </section>
 
       <section className="rp-section">
         <h2>Data Summary</h2>
-        <p>Review the available saved records in your current browser.</p>
+
+        <p>
+          Review the available saved records in your current browser.
+        </p>
 
         <div className="rp-table-wrap">
           <table className="rp-table">
@@ -346,6 +455,7 @@ export default function ReportsPage() {
               {cards.map((card) => (
                 <tr key={card.title}>
                   <td>{card.title}</td>
+
                   <td>
                     {loaded
                       ? card.value.toLocaleString("en-IN")
@@ -358,10 +468,14 @@ export default function ReportsPage() {
         </div>
 
         <div className="rp-note">
-          Note: Counts depend on the localStorage keys used by your existing
-          pages. If a feature uses a different key, its count may show zero
-          until we connect the correct key. These counts represent saved
-          records, not verified printing history.
+          <strong>Important:</strong> Products are counted from the existing
+          product storage. Labels are counted using the storage keys used by
+          the Labels page. Barcodes count non-archived products that have a
+          saved barcode value. QR Codes count saved records under
+          &quot;labelpro_qrcodes&quot;; the current QR generator does not
+          automatically save generated QR codes, so this number may remain
+          zero until QR history storage is added. These figures are saved
+          record counts, not printing history.
         </div>
       </section>
     </main>
