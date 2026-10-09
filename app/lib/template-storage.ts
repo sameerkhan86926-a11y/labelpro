@@ -1,4 +1,8 @@
 import type { LabelTemplate } from "./label-types";
+import {
+  createSampleTemplates,
+  SAMPLE_TEMPLATE_PREFIX,
+} from "./sample-templates";
 
 const TEMPLATES_KEY = "labelpro_templates";
 
@@ -12,13 +16,58 @@ export function getTemplates(): LabelTemplate[] {
   try {
     const stored = window.localStorage.getItem(TEMPLATES_KEY);
 
-    if (!stored) return [];
+    if (!stored) {
+      const samples = createSampleTemplates();
+      window.localStorage.setItem(
+        TEMPLATES_KEY,
+        JSON.stringify(samples),
+      );
+      return samples;
+    }
 
-    const parsed = JSON.parse(stored);
+    const parsed: unknown = JSON.parse(stored);
 
     if (!Array.isArray(parsed)) return [];
 
-    return parsed;
+    const templates = parsed as LabelTemplate[];
+
+    // Add any missing sample templates without overwriting
+    // templates that the user has already saved or edited.
+    const existingSampleNames = new Set(
+      templates
+        .filter((template) =>
+          template.name.startsWith(SAMPLE_TEMPLATE_PREFIX),
+        )
+        .map((template) => template.name),
+    );
+
+    const samples = createSampleTemplates().filter(
+      (sample) =>
+        !templates.some(
+          (template) => template.id === sample.id,
+        ) &&
+        !templates.some(
+          (template) =>
+            template.name === sample.name &&
+            [
+              "Retail Price Label",
+              "Product Barcode Label",
+              "Perfume Label",
+            ].includes(template.name),
+        ) &&
+        !existingSampleNames.has(sample.name),
+    );
+
+    if (samples.length > 0) {
+      const updated = [...templates, ...samples];
+      window.localStorage.setItem(
+        TEMPLATES_KEY,
+        JSON.stringify(updated),
+      );
+      return updated;
+    }
+
+    return templates;
   } catch {
     return [];
   }
@@ -39,21 +88,14 @@ export function getTemplateById(
   const templates = getTemplates();
 
   return (
-    templates.find(
-      (template) => template.id === id,
-    ) ?? null
+    templates.find((template) => template.id === id) ?? null
   );
 }
 
-export function addTemplate(
-  template: LabelTemplate,
-) {
+export function addTemplate(template: LabelTemplate) {
   const templates = getTemplates();
 
-  const updatedTemplates = [
-    ...templates,
-    template,
-  ];
+  const updatedTemplates = [...templates, template];
 
   saveTemplates(updatedTemplates);
 
@@ -66,18 +108,26 @@ export function updateTemplate(
 ) {
   const templates = getTemplates();
 
-  const updatedTemplates = templates.map(
-    (template) => {
-      if (template.id !== id) {
-        return template;
-      }
+  const updatedTemplates = templates.map((template) => {
+    if (template.id !== id) return template;
 
-      return {
-        ...template,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    return {
+      ...template,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  saveTemplates(updatedTemplates);
+
+  return updatedTemplates;
+}
+
+export function deleteTemplate(id: string) {
+  const templates = getTemplates();
+
+  const updatedTemplates = templates.filter(
+    (template) => template.id !== id,
   );
 
   saveTemplates(updatedTemplates);
@@ -85,24 +135,7 @@ export function updateTemplate(
   return updatedTemplates;
 }
 
-export function deleteTemplate(
-  id: string,
-) {
-  const templates = getTemplates();
-
-  const updatedTemplates =
-    templates.filter(
-      (template) => template.id !== id,
-    );
-
-  saveTemplates(updatedTemplates);
-
-  return updatedTemplates;
-}
-
-export function duplicateTemplate(
-  id: string,
-) {
+export function duplicateTemplate(id: string) {
   const template = getTemplateById(id);
 
   if (!template) return null;
@@ -115,12 +148,10 @@ export function duplicateTemplate(
     name: `${template.name} Copy`,
     createdAt: now,
     updatedAt: now,
-    elements: template.elements.map(
-      (element) => ({
-        ...element,
-        id: crypto.randomUUID(),
-      }),
-    ),
+    elements: template.elements.map((element) => ({
+      ...element,
+      id: crypto.randomUUID(),
+    })),
   };
 
   addTemplate(duplicatedTemplate);
@@ -131,7 +162,5 @@ export function duplicateTemplate(
 export function clearTemplates() {
   if (!isBrowser()) return;
 
-  window.localStorage.removeItem(
-    TEMPLATES_KEY,
-  );
+  window.localStorage.removeItem(TEMPLATES_KEY);
 }
