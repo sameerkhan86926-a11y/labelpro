@@ -108,16 +108,18 @@ function loadInitialSettings(): AppSettings {
 }
 
 export default function SettingsPage() {
-  const [settings, setSettings] =
-    useState<AppSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<AppSettings>(
+  () => loadInitialSettings()
+);
 
-  const [ready, setReady] = useState(false);
+const [ready, setReady] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    setSettings(loadInitialSettings());
-    setReady(true);
-  }, []);
+  if (ready) {
+    document.documentElement.dataset.theme = settings.theme;
+  }
+}, [ready, settings.theme]);
 
   useEffect(() => {
     if (ready) {
