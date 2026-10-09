@@ -37,24 +37,19 @@ export default function TemplatesPage() {
     refreshTemplates();
   }
 
-  function openTemplate(
-    template: LabelTemplate,
-  ) {
-    try {
-      window.localStorage.setItem(
-        "labelpro_editor_template",
-        JSON.stringify(template),
-      );
+  function openTemplate(template: LabelTemplate) {
+  try {
+    window.localStorage.setItem(
+      "labelpro_editor_template",
+      JSON.stringify(template)
+    );
 
-      window.location.assign(
-        "/labelpro/labels/designer/",
-      );
-    } catch {
-      window.alert(
-        "Unable to open template.",
-      );
-    }
+    window.location.href =
+      `/labelpro/labels/designer/?templateId=${encodeURIComponent(template.id)}`;
+  } catch {
+    window.alert("Unable to open template. Please try again.");
   }
+}
 
   return (
     <main className="templates-page">
