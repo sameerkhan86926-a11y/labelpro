@@ -14,12 +14,28 @@ function subscribe(callback: () => void) {
   };
 }
 
+let cachedProducts: StoredProduct[] = [];
+let cachedSignature = "";
+
 function getSnapshot(): StoredProduct[] {
-  return getProducts().filter((product) => !product.archived);
+  const products = getProducts().filter(
+    (product) => !product.archived
+  );
+
+  const signature = JSON.stringify(products);
+
+  if (signature !== cachedSignature) {
+    cachedSignature = signature;
+    cachedProducts = products;
+  }
+
+  return cachedProducts;
 }
 
+const EMPTY_PRODUCTS: StoredProduct[] = [];
+
 function getServerSnapshot(): StoredProduct[] {
-  return [];
+  return EMPTY_PRODUCTS;
 }
 
 export default function PrintCenterPage() {
