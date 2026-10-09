@@ -607,27 +607,21 @@ function handleGenerateBarcode(product: StoredProduct) {
                   Archive
                 </button>
 
-                <button
-                  className="table-action"
-                  onClick={() =>
-                    window.alert(
-                      "Label generation module will be connected here."
-                    )
-                  }
-                >
-                  Generate Label
-                </button>
+               <button
+  type="button"
+  className="table-action"
+  onClick={() => handleGenerateLabel(selectedProduct)}
+>
+  Generate Label
+</button>
 
                 <button
-                  className="table-action"
-                  onClick={() =>
-                    window.alert(
-                      "Barcode generator module will be connected here."
-                    )
-                  }
-                >
-                  Generate Barcode
-                </button>
+  type="button"
+  className="table-action"
+  onClick={() => handleGenerateBarcode(selectedProduct)}
+>
+  Generate Barcode
+</button>
               </>
             )}
 
