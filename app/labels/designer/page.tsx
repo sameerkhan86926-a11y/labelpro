@@ -398,9 +398,24 @@ export default function LabelDesignerPage() {
     [],
   );
 
-  function loadProducts() {
-    setProducts(getProducts());
+ function loadProducts() {
+  const availableProducts = getProducts();
+
+  setProducts(availableProducts);
+
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get("productId");
+
+  if (!productId) return;
+
+  const product = availableProducts.find(
+    (item) => String(item.id) === productId
+  );
+
+  if (product) {
+    setSelectedProductId(String(product.id));
   }
+}
 
   function updateTemplate(
     updates: Partial<LabelTemplate>,
