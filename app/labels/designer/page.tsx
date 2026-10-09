@@ -422,6 +422,9 @@ export default function LabelDesignerPage() {
     setSelectedProductId(String(product.id));
   }
 }, []);
+  useEffect(() => {
+  loadProducts();
+}, [loadProducts]);
   function updateTemplate(
     updates: Partial<LabelTemplate>,
   ) {
