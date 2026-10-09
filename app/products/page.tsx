@@ -309,6 +309,23 @@ export default function ProductsPage() {
     setShowForm(false);
     setEditingId(null);
   }
+  function handleGenerateLabel(product: StoredProduct) {
+  const params = new URLSearchParams({
+    productId: String(product.id),
+  });
+
+  window.location.href =
+    `/labelpro/labels/designer/?${params.toString()}`;
+}
+
+function handleGenerateBarcode(product: StoredProduct) {
+  const params = new URLSearchParams({
+    productId: String(product.id),
+  });
+
+  window.location.href =
+    `/labelpro/barcodes/?${params.toString()}`;
+}
 
   function formatDate(value: string) {
     if (!value) {
