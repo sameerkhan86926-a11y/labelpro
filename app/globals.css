@@ -3464,3 +3464,323 @@ a {
     animation: none !important;
   }
 }
+/* ==============================
+   BARCODE TABS
+============================== */
+
+.barcode-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.barcode-tabs button {
+  flex: 1;
+  min-width: 110px;
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.barcode-tabs button:hover {
+  background: #eff6ff;
+  color: var(--primary);
+}
+
+.barcode-tabs button.active,
+.barcode-tabs button[aria-selected="true"] {
+  border-color: #dbeafe;
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+
+/* ==============================
+   BULK BARCODE PANEL
+============================== */
+
+.barcode-bulk-panel {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(16, 24, 40, 0.03);
+}
+
+.barcode-panel-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.barcode-panel-title h2,
+.barcode-panel-title h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.barcode-panel-title p {
+  margin: 7px 0 0;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ==============================
+   PRODUCT LIST
+============================== */
+
+.barcode-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.barcode-product-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #ffffff;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.barcode-product-row:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.barcode-product-row:has(input:checked) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.barcode-product-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.barcode-product-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.barcode-product-name strong {
+  overflow-wrap: anywhere;
+  color: #101828;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.barcode-product-name span {
+  overflow-wrap: anywhere;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ==============================
+   BARCODE STATUS
+============================== */
+
+.barcode-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 25px;
+  padding: 5px 9px;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #f9fafb;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.barcode-status.ready {
+  border-color: #abefc6;
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.barcode-status.missing {
+  border-color: #fedf89;
+  background: #fffaeb;
+  color: #b54708;
+}
+
+/* ==============================
+   BULK ACTION FOOTER
+============================== */
+
+.barcode-bulk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eaecf0;
+}
+
+.barcode-bulk-footer p,
+.barcode-bulk-footer span {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.barcode-bulk-footer button {
+  min-height: 40px;
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 7px;
+  background: var(--primary);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.barcode-bulk-footer button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.barcode-bulk-footer button:disabled {
+  border-color: #d0d5dd;
+  background: #e4e7ec;
+  color: #98a2b3;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
+
+/* ==============================
+   HELPFUL TEXT
+============================== */
+
+.barcode-help {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.barcode-help strong {
+  color: #1e40af;
+}
+
+.barcode-help a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ==============================
+   MOBILE RESPONSIVE
+============================== */
+
+@media (max-width: 600px) {
+  .barcode-tabs {
+    gap: 5px;
+    padding: 4px;
+  }
+
+  .barcode-tabs button {
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+
+  .barcode-bulk-panel {
+    padding: 15px;
+  }
+
+  .barcode-panel-title {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .barcode-panel-title h2,
+  .barcode-panel-title h3 {
+    font-size: 16px;
+  }
+
+  .barcode-product-row {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 11px;
+  }
+
+  .barcode-product-row input[type="checkbox"] {
+    margin-top: 3px;
+  }
+
+  .barcode-product-name strong {
+    font-size: 12px;
+  }
+
+  .barcode-product-name span {
+    font-size: 10px;
+  }
+
+  .barcode-status {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  .barcode-bulk-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .barcode-bulk-footer button {
+    width: 100%;
+  }
+
+  .barcode-help {
+    padding: 10px;
+    font-size: 10px;
+  }
+}
