@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 type SavedLabel = {
   id: string;
@@ -10,33 +10,54 @@ type SavedLabel = {
   createdAt?: string;
 };
 
-export default function LabelsPage() {
-  const [labels, setLabels] = useState<SavedLabel[]>([]);
+const STORAGE_KEYS = [
+  "labelpro_labels",
+  "labelpro_saved_labels",
+  "labelpro_designs",
+];
 
-  useEffect(() => {
-    try {
-      const possibleKeys = [
-        "labelpro_labels",
-        "labelpro_saved_labels",
-        "labelpro_designs",
-      ];
+const EMPTY_LABELS: SavedLabel[] = [];
 
-      for (const key of possibleKeys) {
-        const raw = localStorage.getItem(key);
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("labelpro-labels-updated", callback);
 
-        if (raw) {
-          const parsed: unknown = JSON.parse(raw);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("labelpro-labels-updated", callback);
+  };
+}
 
-          if (Array.isArray(parsed)) {
-            setLabels(parsed as SavedLabel[]);
-            return;
-          }
-        }
+function getSavedLabels(): SavedLabel[] {
+  try {
+    for (const key of STORAGE_KEYS) {
+      const raw = localStorage.getItem(key);
+
+      if (!raw) continue;
+
+      const parsed: unknown = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed as SavedLabel[];
       }
-    } catch {
-      setLabels([]);
     }
-  }, []);
+  } catch {
+    return EMPTY_LABELS;
+  }
+
+  return EMPTY_LABELS;
+}
+
+function getServerLabels(): SavedLabel[] {
+  return EMPTY_LABELS;
+}
+
+export default function LabelsPage() {
+  const labels = useSyncExternalStore(
+    subscribeToStorage,
+    getSavedLabels,
+    getServerLabels
+  );
 
   return (
     <main
@@ -100,7 +121,10 @@ export default function LabelsPage() {
             <p style={{ color: "#64748b", margin: "0 0 10px" }}>
               Saved Labels
             </p>
-            <strong style={{ fontSize: "30px" }}>{labels.length}</strong>
+
+            <strong style={{ fontSize: "30px" }}>
+              {labels.length}
+            </strong>
           </div>
 
           <div
@@ -113,6 +137,7 @@ export default function LabelsPage() {
             }}
           >
             <h3 style={{ marginTop: 0 }}>Create a new label</h3>
+
             <p style={{ color: "#64748b", lineHeight: 1.6 }}>
               Open Label Designer to create a label for your products.
             </p>
@@ -163,8 +188,8 @@ export default function LabelsPage() {
               </strong>
 
               <p>
-                Your existing labels will appear here when they are saved
-                using the connected storage system.
+                Saved labels will appear here when they are stored using a
+                compatible storage key.
               </p>
             </div>
           ) : (
