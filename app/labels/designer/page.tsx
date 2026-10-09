@@ -1436,7 +1436,6 @@ export default function LabelDesignerPage() {
             id="preview-product"
             className="designer-select"
             value={selectedProductId}
-            onFocus={loadProducts}
             onChange={(event) =>
               setSelectedProductId(
                 event.target.value,
