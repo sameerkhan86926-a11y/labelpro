@@ -49,6 +49,12 @@ export const navigationItems: NavigationItem[] = [
     section: "tools",
   },
   {
+    label: "Import / Export",
+    description: "Import products from CSV and export product data",
+    path: "/import-export/",
+    section: "management",
+  },
+  {
     label: "Reports",
     description: "View workspace statistics and reports",
     path: "/reports/",
