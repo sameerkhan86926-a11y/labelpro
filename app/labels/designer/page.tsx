@@ -322,6 +322,9 @@ export default function LabelDesignerPage() {
 
   const [savedMessage, setSavedMessage] =
     useState("");
+  useEffect(() => {
+  loadProducts();
+}, [loadProducts]);
 
   const [history, setHistory] =
     useState<LabelTemplate[]>([]);
@@ -398,12 +401,17 @@ export default function LabelDesignerPage() {
     [],
   );
 
- function loadProducts() {
-  const availableProducts = getProducts();
+ const loadProducts = useCallback(() => {
+  const availableProducts = getProducts().filter(
+    (product) => !product.archived
+  );
 
   setProducts(availableProducts);
 
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
   const productId = params.get("productId");
 
   if (!productId) return;
@@ -415,8 +423,7 @@ export default function LabelDesignerPage() {
   if (product) {
     setSelectedProductId(String(product.id));
   }
-}
-
+}, []);
   function updateTemplate(
     updates: Partial<LabelTemplate>,
   ) {
