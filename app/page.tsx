@@ -9,7 +9,7 @@ const quickActions = [
     title: "Create Label",
     description: "Design a new professional label",
     icon: "▣",
-    path: "/label-designer/",
+    path: "/labels/designer/",
   },
   {
     title: "Add Product",
@@ -40,7 +40,7 @@ const modules = [
   {
     title: "Label Designer",
     description: "Create professional labels with a flexible visual editor.",
-    path: "/label-designer/",
+    path: "/labels/designer/",
   },
   {
     title: "Labels",
@@ -88,7 +88,7 @@ const navigation = [
   { label: "Dashboard", path: "/" },
   { label: "Products", path: "/products/" },
   { label: "Labels", path: "/labels/" },
-  { label: "Label Designer", path: "/label-designer/" },
+  { label: "Label Designer", path: "/labels/designer/" },
   { label: "Barcodes", path: "/barcodes/" },
   { label: "QR Codes", path: "/qr-codes/" },
   { label: "Templates", path: "/templates/" },
