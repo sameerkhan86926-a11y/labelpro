@@ -15,6 +15,7 @@ import {
   type DragStart,
   type ResizeStart,
 } from "../../lib/label-editor";
+import { getTemplateById } from "../../lib/template-storage";
 
 import {
   createLabelElement,
@@ -267,49 +268,54 @@ function QRElement({
 }
 
 export default function LabelDesignerPage() {
-  const [template, setTemplate] =
-  useState<LabelTemplate>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored =
-          window.localStorage.getItem(
-            "labelpro_editor_template",
+  const [template, setTemplate] = useState<LabelTemplate>(() => {
+  if (typeof window !== "undefined") {
+    try {
+      // First: check the template passed from Templates page
+      const stored = window.localStorage.getItem(
+        "labelpro_editor_template"
+      );
+
+      if (stored) {
+        const parsed = JSON.parse(stored);
+
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          Array.isArray(parsed.elements) &&
+          parsed.size &&
+          typeof parsed.size.width === "number" &&
+          typeof parsed.size.height === "number"
+        ) {
+          window.localStorage.removeItem(
+            "labelpro_editor_template"
           );
 
-        if (stored) {
-          const parsed =
-            JSON.parse(stored);
-
-          if (
-            parsed &&
-            typeof parsed === "object" &&
-            Array.isArray(parsed.elements) &&
-            parsed.size &&
-            typeof parsed.size.width ===
-              "number" &&
-            typeof parsed.size.height ===
-              "number"
-          ) {
-            window.localStorage.removeItem(
-              "labelpro_editor_template",
-            );
-
-            return parsed as LabelTemplate;
-          }
+          return parsed as LabelTemplate;
         }
-      } catch {
-        window.localStorage.removeItem(
-          "labelpro_editor_template",
-        );
       }
-    }
 
-    return createLabelTemplate(
-      "New Product Label",
-      50,
-      25,
-    );
-  });
+      // Second: load template using URL templateId
+      const params = new URLSearchParams(
+        window.location.search
+      );
+
+      const templateId = params.get("templateId");
+
+      if (templateId) {
+        const savedTemplate = getTemplateById(templateId);
+
+        if (savedTemplate) {
+          return savedTemplate;
+        }
+      }
+    } catch (error) {
+      console.error("Unable to load template:", error);
+    }
+  }
+
+  return createLabelTemplate("New Product Label", 50, 25);
+});
 
   const [selectedElementId, setSelectedElementId] =
     useState<string | null>(null);
