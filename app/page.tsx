@@ -120,15 +120,10 @@ export default function Home() {
   }, []);
 
   function navigateTo(label: string, path: string) {
-    setActiveTab(label);
+  setActiveTab(label);
 
-    if (path === "/") {
-      router.push("/labelpro/");
-      return;
-    }
-
-    router.push(`/labelpro${path}`);
-  }
+  router.push(path);
+}
 
   return (
     <main className="app-shell">
