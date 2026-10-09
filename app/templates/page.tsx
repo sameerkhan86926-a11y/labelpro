@@ -44,8 +44,9 @@ export default function TemplatesPage() {
       JSON.stringify(template)
     );
 
-    window.location.href =
-      `/labelpro/labels/designer/?templateId=${encodeURIComponent(template.id)}`;
+    window.location.assign(
+  `/labelpro/labels/designer/?templateId=${encodeURIComponent(template.id)}`
+);
   } catch {
     window.alert("Unable to open template. Please try again.");
   }
