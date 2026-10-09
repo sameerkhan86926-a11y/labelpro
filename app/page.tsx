@@ -1,27 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getProducts } from "./lib/storage";
 
 const quickActions = [
   {
     title: "Create Label",
     description: "Design a new professional label",
     icon: "▣",
+    path: "/label-designer/",
   },
   {
     title: "Add Product",
     description: "Add product and SKU information",
     icon: "+",
+    path: "/products/",
   },
   {
     title: "Generate Barcode",
     description: "Create a barcode instantly",
     icon: "▥",
+    path: "/barcodes/",
   },
   {
     title: "Generate QR",
     description: "Create a QR code",
     icon: "⌁",
+    path: "/qr-codes/",
   },
 ];
 
@@ -29,31 +35,100 @@ const modules = [
   {
     title: "Products",
     description: "Manage products, SKUs, prices, stock and product details.",
+    path: "/products/",
   },
-    {
+  {
     title: "Label Designer",
     description: "Create professional labels with a flexible visual editor.",
+    path: "/label-designer/",
+  },
+  {
+    title: "Labels",
+    description: "View and manage your created labels.",
+    path: "/labels/",
   },
   {
     title: "Barcodes",
     description: "Generate and manage multiple professional barcode formats.",
+    path: "/barcodes/",
   },
   {
     title: "QR Codes",
     description: "Create QR codes for products, URLs and custom information.",
+    path: "/qr-codes/",
   },
   {
     title: "Templates",
     description: "Save reusable label designs for repeated printing.",
+    path: "/templates/",
   },
   {
     title: "Print Center",
     description: "Preview, generate and print labels with precise settings.",
+    path: "/print-center/",
+  },
+  {
+    title: "Import / Export",
+    description: "Import products from CSV and export product data.",
+    path: "/import-export/",
+  },
+  {
+    title: "Reports",
+    description: "Review product and workspace information.",
+    path: "/reports/",
+  },
+  {
+    title: "Settings",
+    description: "Manage your workspace preferences.",
+    path: "/settings/",
   },
 ];
 
+const navigation = [
+  { label: "Dashboard", path: "/" },
+  { label: "Products", path: "/products/" },
+  { label: "Labels", path: "/labels/" },
+  { label: "Label Designer", path: "/label-designer/" },
+  { label: "Barcodes", path: "/barcodes/" },
+  { label: "QR Codes", path: "/qr-codes/" },
+  { label: "Templates", path: "/templates/" },
+  { label: "Print Center", path: "/print-center/" },
+  { label: "Import / Export", path: "/import-export/" },
+  { label: "Reports", path: "/reports/" },
+];
+
 export default function Home() {
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [productCount, setProductCount] = useState(0);
+
+  useEffect(() => {
+    function refreshProductCount() {
+      setProductCount(getProducts().filter((product) => !product.archived).length);
+    }
+
+    refreshProductCount();
+
+    window.addEventListener("focus", refreshProductCount);
+    window.addEventListener("storage", refreshProductCount);
+
+    return () => {
+      window.removeEventListener("focus", refreshProductCount);
+      window.removeEventListener("storage", refreshProductCount);
+    };
+  }, []);
+
+  function navigateTo(label: string, path: string) {
+    setActiveTab(label);
+
+    if (path === "/") {
+      router.push("/labelpro/");
+      return;
+    }
+
+    router.push(`/labelpro${path}`);
+  }
 
   return (
     <main className="app-shell">
@@ -68,31 +143,27 @@ export default function Home() {
         </div>
 
         <nav className="navigation">
-          {[
-            "Dashboard",
-            "Products",
-            "Labels",
-            "Barcodes",
-            "QR Codes",
-            "Templates",
-            "Print Center",
-            "Reports",
-          ].map((item) => (
+          {navigation.map((item) => (
             <button
-              key={item}
+              key={item.label}
+              type="button"
               className={`nav-item ${
-                activeTab === item ? "active" : ""
+                activeTab === item.label ? "active" : ""
               }`}
-              onClick={() => setActiveTab(item)}
+              onClick={() => navigateTo(item.label, item.path)}
             >
               <span className="nav-dot" />
-              {item}
+              {item.label}
             </button>
           ))}
         </nav>
 
         <div className="sidebar-bottom">
-          <button className="nav-item">
+          <button
+            type="button"
+            className="nav-item"
+            onClick={() => navigateTo("Settings", "/settings/")}
+          >
             <span className="nav-dot" />
             Settings
           </button>
@@ -112,8 +183,21 @@ export default function Home() {
           </div>
 
           <div className="topbar-actions">
-            <button className="secondary-button">Backup</button>
-            <button className="primary-button">+ Create Label</button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => navigateTo("Import / Export", "/import-export/")}
+            >
+              Backup / Export
+            </button>
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => navigateTo("Label Designer", "/label-designer/")}
+            >
+              + Create Label
+            </button>
           </div>
         </header>
 
@@ -143,26 +227,26 @@ export default function Home() {
           <section className="stats-grid">
             <div className="stat-card">
               <span>Total Products</span>
-              <strong>0</strong>
-              <small>Products in workspace</small>
+              <strong>{productCount}</strong>
+              <small>Active products in workspace</small>
             </div>
 
             <div className="stat-card">
               <span>Labels Created</span>
-              <strong>0</strong>
-              <small>All label designs</small>
+              <strong>—</strong>
+              <small>Label statistics not connected yet</small>
             </div>
 
             <div className="stat-card">
               <span>Labels Printed</span>
-              <strong>0</strong>
-              <small>Printing activity</small>
+              <strong>—</strong>
+              <small>Print history not connected yet</small>
             </div>
 
             <div className="stat-card">
               <span>Templates</span>
-              <strong>0</strong>
-              <small>Saved templates</small>
+              <strong>—</strong>
+              <small>Template statistics not connected yet</small>
             </div>
           </section>
 
@@ -178,7 +262,12 @@ export default function Home() {
 
             <div className="actions-grid">
               {quickActions.map((action) => (
-                <button className="action-card" key={action.title}>
+                <button
+                  type="button"
+                  className="action-card"
+                  key={action.title}
+                  onClick={() => navigateTo(action.title, action.path)}
+                >
                   <span className="action-icon">{action.icon}</span>
 
                   <span className="action-content">
@@ -202,7 +291,12 @@ export default function Home() {
 
             <div className="modules-grid">
               {modules.map((module) => (
-                <button className="module-card" key={module.title}>
+                <button
+                  type="button"
+                  className="module-card"
+                  key={module.title}
+                  onClick={() => navigateTo(module.title, module.path)}
+                >
                   <div className="module-icon">
                     {module.title.charAt(0)}
                   </div>
@@ -226,14 +320,21 @@ export default function Home() {
                   <h3>Latest work</h3>
                 </div>
 
-                <button className="text-button">View all</button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => navigateTo("Reports", "/reports/")}
+                >
+                  View reports
+                </button>
               </div>
 
               <div className="empty-state">
                 <div className="empty-icon">○</div>
-                <strong>No activity yet</strong>
+                <strong>Activity tracking not connected</strong>
                 <p>
-                  Your label, product and printing activity will appear here.
+                  Activity history will appear here after the activity module
+                  is implemented.
                 </p>
               </div>
             </div>
@@ -242,29 +343,29 @@ export default function Home() {
               <div className="panel-heading">
                 <div>
                   <span className="section-label">WORKSPACE STATUS</span>
-                  <h3>System ready</h3>
+                  <h3>Workspace overview</h3>
                 </div>
               </div>
 
               <div className="status-list">
                 <div>
                   <span>Product storage</span>
-                  <strong>Ready</strong>
+                  <strong>Available</strong>
                 </div>
 
                 <div>
                   <span>Label designer</span>
-                  <strong>Ready</strong>
+                  <strong>Page link configured</strong>
                 </div>
 
                 <div>
-                  <span>Barcode engine</span>
-                  <strong>Ready</strong>
+                  <span>Barcode tools</span>
+                  <strong>Page link configured</strong>
                 </div>
 
                 <div>
-                  <span>Print system</span>
-                  <strong>Ready</strong>
+                  <span>Print center</span>
+                  <strong>Page link configured</strong>
                 </div>
               </div>
             </div>
