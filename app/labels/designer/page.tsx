@@ -322,9 +322,7 @@ export default function LabelDesignerPage() {
 
   const [savedMessage, setSavedMessage] =
     useState("");
-  useEffect(() => {
-  loadProducts();
-}, [loadProducts]);
+  
 
   const [history, setHistory] =
     useState<LabelTemplate[]>([]);
