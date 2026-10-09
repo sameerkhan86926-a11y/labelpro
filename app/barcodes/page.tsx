@@ -69,12 +69,36 @@ export default function BarcodesPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setProducts(getProducts().filter((product) => !product.archived));
-    }, 0);
+  const timer = window.setTimeout(() => {
+    const availableProducts = getProducts().filter(
+      (product) => !product.archived
+    );
 
-    return () => window.clearTimeout(timer);
-  }, []);
+    setProducts(availableProducts);
+
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get("productId");
+
+    if (!productId) return;
+
+    const product = availableProducts.find(
+      (item) => String(item.id) === productId
+    );
+
+    if (!product) {
+      setError("Selected product was not found.");
+      return;
+    }
+
+    setSelectedProductId(String(product.id));
+    setValue(product.barcode || product.sku || "");
+    setBulkMode(false);
+    setError("");
+    setSuccess("");
+  }, 0);
+
+  return () => window.clearTimeout(timer);
+}, []);
 
   useEffect(() => {
     const svg = barcodeRef.current;
