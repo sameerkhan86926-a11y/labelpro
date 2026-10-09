@@ -15,7 +15,7 @@ import {
   type DragStart,
   type ResizeStart,
 } from "../../lib/label-editor";
-import { getTemplateById } from "../../lib/template-storage";
+
 
 import {
   createLabelElement,
